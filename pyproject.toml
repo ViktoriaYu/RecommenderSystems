@@ -1,0 +1,30 @@
+[project]
+name = "hybrid-book-recsys"
+version = "0.1.0"
+description = "Hybrid book recommendation system"
+authors = [
+    {name = "Igor Grebnev",email = "gre@sfedu.ru"}
+]
+readme = "README.md"
+requires-python = "^3.13.5"
+dependencies = [
+    "pandas (>=2.3.2,<3.0.0)",
+    "scikit-learn (>=1.7.2,<2.0.0)",
+    "jupyter (>=1.1.1,<2.0.0)",
+    "matplotlib (>=3.10.6,<4.0.0)",
+    "seaborn (>=0.13.2,<0.14.0)",
+    "fastapi (>=0.117.1,<0.118.0)",
+    "polars (>=1.33.1,<2.0.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.4.2"
+black = "^25.9.0"
+isort = "^6.0.1"
+jupyterlab = "^4.4.7"
+
