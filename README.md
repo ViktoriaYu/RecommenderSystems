@@ -1,25 +1,37 @@
 # Book Recommender System (BRS)
 
-We conducted an initial evaluation of baseline recommendation algorithms to establish performance benchmarks. The results demonstrate significant improvements from simple heuristics to advanced collaborative filtering.
+## Роли
+### Data Engineer (MLOps & Infrastructure) (Виктория Юдина)
+**Фокус: ETL и инфраструктура**
+  
+### Data Scientist (Research & Models) (Гребнев Игорь)
+**Фокус: EDA, эксперименты и ML модели**
 
-| Algorithm | nDCG@10 | MAP@10 |
-|-----------|---------|---------|
-| Random    | 0.0096 ± 0.0037 | 0.0006 ± 0.0003 |
-| Popular   | 0.2366 ± 0.0132 | 0.0264 ± 0.0022 |
-| ALS(SVD)  | **0.6286 ± 0.0126** | **0.1754 ± 0.0067** |
+### Backend Developer (API & Services) (Анастасия И)
+**Фокус: API и интеграция**
 
-### Key Insights:
-- **ALS (SVD) outperforms Popular by 2.7×** in nDCG@10, demonstrating the power of collaborative filtering
-- **65× improvement over random baseline** shows meaningful signal in the data
-- Low standard deviations (± values) indicate stable and reproducible results
-- Results provide a strong foundation for hybrid system development
+## Первичная оценка алгоритмов
 
-### Evaluation Details:
-- **Dataset**: Goodbooks-10k (6M ratings, 10K books, 53K users)
-- **Data Split**: 80% for training and 20% for testing (simple random split)
-- **Validation**: Hold-out split with bootstrap sampling (n=20)
-- **Metrics**: 
-  - **nDCG@10**: Normalized Discounted Cumulative Gain (ranking quality)
-  - **MAP@10**: Mean Average Precision (relevance accuracy)
+Мы провели сравнительный анализ базовых алгоритмов рекомендаций для установления производительностных бенчмарков. Результаты демонстрируют значительное улучшение от простых эвристик к продвинутым методам коллаборативной фильтрации.
 
-These results establish a solid baseline for comparing our hybrid recommendation approach in upcoming iterations.
+| Алгоритм | nDCG@10 | MAP@10 |
+|----------|---------|---------|
+| Random| 0.0097 ± 0.0035 | 0.0006 ± 0.0003 |
+| Popular| 0.2420 ± 0.0161 | 0.0266 ± 0.0024 |
+| **ALS (SVD)** | **0.6306 ± 0.0127** | **0.1766 ± 0.0102** |
+
+### Анализ результатов:
+- **ALS (SVD) превосходит Popular в 2.6 раза** по метрике nDCG@10, что подтверждает эффективность коллаборативной фильтрации
+- **Улучшение в 65 раз относительно случайного базового уровня** свидетельствует о наличии значимых паттернов в данных
+- **Низкое стандартное отклонение** (± значения) демонстрирует стабильность и воспроизводимость результатов
+- **Результаты создают хорошую основу** для разработки гибридной системы рекомендаций
+
+### Детали:
+- **Датасет**: [Goodbooks-10k](https://github.com/zygmuntz/goodbooks-10k) (6 млн оценок, 10 тыс. книг, 53 тыс. пользователей)
+- **Генерация временных меток**: Искусственное создание timestamp для имитации реального временного контекста
+- **Разделение данных**: Temporal split (80% ранние взаимодействия для обучения, 20% поздние для тестирования)
+- **Алгоритм разделения**: Per-user temporal split (стратегия "прошлое-будущее" для каждого пользователя)
+- **Валидация**: Hold-out с бутстрап семплированием (n=20 итераций)
+- **Метрики**:
+  - **nDCG@10**: Оценка качества ранжирования
+  - **MAP@10**: Оценка релевантности рекомендаций
