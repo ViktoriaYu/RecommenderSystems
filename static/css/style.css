@@ -1,0 +1,430 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.6;
+    color: #333;
+    background-color: #f8f9fa;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+/* Шапка */
+.header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 2rem 0;
+    text-align: center;
+    margin-bottom: 2rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.header h1 {
+    font-size: 2.5rem;
+    margin-bottom: 0.5rem;
+    font-weight: 300;
+}
+
+.header p {
+    font-size: 1.1rem;
+    opacity: 0.9;
+}
+
+/* Контактная информация в стиле шапки */
+.contact-header {
+    background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+    color: white;
+    padding: 2rem 0;
+    text-align: center;
+    margin: 2rem 0;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.contact-header h2 {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+    font-weight: 300;
+}
+
+.contact-header p {
+    font-size: 1.1rem;
+    opacity: 0.9;
+    margin-bottom: 1.5rem;
+}
+
+.contact-info {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 2rem;
+    margin-top: 1.5rem;
+}
+
+.contact-item {
+    padding: 1rem;
+}
+
+.contact-item h4 {
+    color: #667eea;
+    margin-bottom: 0.5rem;
+    font-size: 1.1rem;
+}
+
+.contact-item p {
+    opacity: 0.9;
+    font-size: 1rem;
+}
+
+/* Область поиска */
+.search-section {
+    background: white;
+    padding: 2rem;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    margin-bottom: 2rem;
+}
+
+.search-container {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 1rem;
+}
+
+.search-input {
+    flex: 1;
+    padding: 12px 16px;
+    border: 2px solid #e1e5e9;
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: border-color 0.3s ease;
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+.search-button {
+    padding: 12px 24px;
+    background: #667eea;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.search-button:hover {
+    background: #5a6fd8;
+}
+
+.quick-buttons {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.quick-button {
+    padding: 8px 16px;
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 0.9rem;
+}
+
+.quick-button:hover {
+    background: #667eea;
+    color: white;
+    border-color: #667eea;
+}
+
+/* Сетка книг - 4 КОЛОНКИ */
+.books-section {
+    margin-bottom: 2rem;
+}
+
+.section-title {
+    font-size: 1.5rem;
+    margin-bottom: 1.5rem;
+    color: #333;
+    font-weight: 600;
+}
+
+.books-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr); /* 4 колонки */
+    gap: 1.5rem;
+}
+
+/* Карточка книги */
+.book-card {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.book-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+/* Контейнер для обложки */
+.book-cover-container {
+    flex-shrink: 0;
+    padding: 20px 20px 0 20px;
+}
+
+.book-cover {
+    width: 100%;
+    height: 220px;
+    position: relative;
+    background: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+/* Изображение обложки - ЦЕНТРИРОВАНИЕ И МАСШТАБИРОВАНИЕ */
+.book-cover-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover; /* Заполняет контейнер, обрезая края */
+    object-position: center; /* Всегда показывает центр изображения */
+    display: block;
+    transition: transform 0.3s ease;
+}
+
+/* Альтернативный вариант - если хотите видеть всю обложку */
+.book-cover-image.contain {
+    object-fit: contain; /* Вмещает всю обложку */
+    background: #f8f9fa; /* Фон для пустых областей */
+}
+
+.book-card:hover .book-cover-image {
+    transform: scale(1.05);
+}
+
+/* Оверлей с кнопкой */
+.book-overlay {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    opacity: 0;
+    transform: translateY(-10px);
+    transition: all 0.3s ease;
+}
+
+.book-cover:hover .book-overlay {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.external-link-btn {
+    background: rgba(255, 255, 255, 0.95);
+    border: none;
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.external-link-btn:hover {
+    background: white;
+    transform: scale(1.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* Контент книги */
+.book-info {
+    padding: 16px 20px 20px 20px;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.book-title {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 6px;
+    color: #2d3748;
+    line-height: 1.4;
+    text-align: center;
+}
+
+.book-author {
+    font-size: 0.85rem;
+    color: #718096;
+    margin-bottom: 12px;
+    text-align: center;
+}
+
+.book-actions {
+    margin-top: auto;
+}
+
+.checkbox-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8rem;
+    cursor: pointer;
+}
+
+.checkbox-label input[type="checkbox"] {
+    width: 14px;
+    height: 14px;
+}
+
+.action-button {
+    width: 100%;
+    padding: 10px;
+    background: #28a745;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: background-color 0.3s ease;
+    margin-bottom: 8px;
+}
+
+.action-button:hover {
+    background: #218838;
+}
+
+.store-link {
+    display: block;
+    text-align: center;
+    font-size: 0.75rem;
+    color: #667eea;
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+.store-link:hover {
+    color: #5a6fd8;
+    text-decoration: underline;
+}
+
+/* Футер */
+.footer {
+    width: 100%;
+    margin-top: 2rem;
+    background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+}
+
+.footer-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+/* Адаптивность */
+@media (max-width: 1200px) {
+    .books-grid {
+        grid-template-columns: repeat(3, 1fr); /* 3 колонки на планшетах */
+    }
+}
+
+@media (max-width: 768px) {
+    .search-container {
+        flex-direction: column;
+    }
+    
+    .books-grid {
+        grid-template-columns: repeat(2, 1fr); /* 2 колонки на мобильных */
+    }
+    
+    .header h1 {
+        font-size: 2rem;
+    }
+    
+    .contact-header h2 {
+        font-size: 1.8rem;
+    }
+    
+    .contact-info {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    .book-cover {
+        height: 200px;
+    }
+    
+    .book-cover-container {
+        padding: 15px 15px 0 15px;
+    }
+    
+    .book-info {
+        padding: 12px 15px 15px 15px;
+    }
+}
+
+@media (max-width: 480px) {
+    .books-grid {
+        grid-template-columns: 1fr; /* 1 колонка на маленьких экранах */
+    }
+    
+    .book-cover {
+        height: 180px;
+    }
+    
+    .book-title {
+        font-size: 0.9rem;
+    }
+    
+    .book-author {
+        font-size: 0.8rem;
+    }
+}
+
+/* Плавное появление изображений */
+.book-cover-image {
+    opacity: 0;
+    transition: opacity 0.5s ease, transform 0.3s ease;
+}
+
+.book-cover-image.loaded {
+    opacity: 1;
+}
+
+/* Обработка ошибок загрузки изображений */
+.book-cover-image.error {
+    object-fit: contain;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 20px;
+}

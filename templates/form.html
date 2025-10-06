@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Надо придумать красивое название</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+
+<body>
+    <!-- Шапка -->
+    <header class="header">
+        <div class="container">
+            <h1>Надо придумать красивое название</h1>
+            <p>Надо придумать красивый слоган</p>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- Область поиска -->
+        <section class="search-section">
+            <div class="search-container">
+                <input type="text" class="search-input" placeholder="Введите название книги, автора или жанр...">
+                <button class="search-button">Найти</button>
+            </div>
+            <div class="quick-buttons">
+                <button class="quick-button">Вот</button>
+                <button class="quick-button">Такая</button>
+                <button class="quick-button">Кошка</button>
+                <button class="quick-button">Тут</button>
+            </div>
+        </section>
+
+        <!-- Сетка книг -->
+        <section class="books-section">
+            <h2 class="section-title">Доступные книги</h2>
+            <div class="books-grid" id="booksGrid">
+                <!-- Книги будут добавляться динамически -->
+                <div class="book-card">
+                    <div class="book-cover">Обложка книги</div>
+                    <div class="book-info">
+                        <h3 class="book-title">Название книги</h3>
+                        <div class="book-actions">
+                            <div class="checkbox-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox"> Хочу прочитать
+                                </label>
+                                <label class="checkbox-label">
+                                    <input type="checkbox"> Уже читал(а)
+                                </label>
+                            </div>
+                            <button class="action-button">Получить рекомендации</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Еще книги... -->
+            </div>
+        </section>
+    </div>
+
+        
+        <footer class="footer">
+            <!-- Контактная информация в стиле шапки -->
+            <section class="contact-header">
+                <div class="container"></div>
+                    <h2>Свяжитесь с нами</h2>
+                    <p>Мы всегда рады помочь вам найти идеальную книгу</p>
+                    <div class="contact-info">
+                        <div class="contact-item">
+                            <h4>Email</h4>
+                            <p>support@bookrecommender.com</p>
+                        </div>
+                        <div class="contact-item">
+                            <h4>Телефон</h4>
+                            <p>+7 (000) 000-00-00</p>
+                        </div>
+                        <div class="contact-item">
+                            <h4>Адрес</h4>
+                            <p>А вот все вам расскажи</p>
+                        </div>
+                        <div class="contact-item">
+                            <h4>Социальные сети</h4>
+                            <p>VK | Telegram | YouTube</p>
+                        </div>
+                    </div>
+                </div>            
+            <p>&copy; 2024 BookRecommender AI. Все права защищены.</p>
+            </section>
+        </footer>
+
+
+    <script>
+        // Пример данных книг (в реальном приложении будут приходить с сервера)
+        const books = [
+            { id: 1, title: "Мастер и Маргарита", cover: "https://images.cybersport.ru/images/as-is/plain/a6/a69507c4-858f-472f-a0eb-4ab186b0aec8.jpg@jpg" },
+            { id: 2, title: "1984", cover: "https://shikimori.one/uploads/poster/characters/211346/main_alt-3326a8b302b49d097b4c4eadd44efcaf.jpeg" },
+            { id: 3, title: "Преступление и наказание", cover: "https://deti-online.com/i/0/21/67145/print/ocharovatelnyy-anime-kotenok.jpg" },
+            { id: 4, title: "Маленький принц", cover: "https://deti-online.com/i/d/e4/67157/print/malenkiy-anime-kotenok.jpg" },
+            { id: 5, title: "Гарри Поттер и философский камень", cover: "https://deti-online.com/i/0/1a/67152/print/milyy-anime-kotenok-s-paketom-moloka.jpg" },
+            { id: 6, title: "Война и мир", cover: "https://kartinki.pics/uploads/posts/2021-07/1626154099_19-kartinkin-com-p-kotiki-anime-art-anime-krasivo-21.jpg" },
+            { id: 7, title: "Три товарища", cover: "https://zvetnoe.ru/upload/resize_cache/catalog/w750h1000/fb1/fb10371e0c64f1b6f98a2cd504d2e56a.jpg" },
+            { id: 8, title: "Атлант расправил плечи", cover: "https://img09.rl0.ru/afisha/e1200x800i/daily.afisha.ru/uploads/images/3/c0/3c0823a3a563d2bc3c5271538bb7ce75.jpg" }
+        ];
+
+        // Функция для отображения книг
+        function renderBooks() {
+            const booksGrid = document.getElementById('booksGrid');
+            booksGrid.innerHTML = '';
+
+            books.forEach(book => {
+                const bookCard = createBookCard(book);
+                booksGrid.innerHTML += bookCard;
+            });
+        }
+
+        function createBookCard(book) {
+            return `
+                <div class="book-card" data-book-id="${book.id}">
+                    <!-- Обложка книги в прямоугольнике -->
+                    <div class="book-cover-container">
+                        <div class="book-cover">
+                            <img src="${book.cover}" 
+                                class="book-cover-image"
+                                loading="lazy"
+                                data-book-id="${book.id}"
+                                onerror="handleImageError(this)"
+                                onload="handleImageLoad(this)">
+                           
+                        </div>
+                    </div>
+                    
+                    <!-- Информация о книге под обложкой -->
+                    <div class="book-info">
+                        <h3 class="book-title">${book.title}</h3>
+                        <p class="book-author">${book.author}</p>
+                        
+                        <div class="book-actions">
+                            <div class="checkbox-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" name="want-to-read-${book.id}"> Хочу прочитать
+                                </label>
+                                <label class="checkbox-label">
+                                    <input type="checkbox" name="already-read-${book.id}"> Уже читал(а)
+                                </label>
+                            </div>
+                            
+                            <button class="action-button" onclick="getRecommendations(${book.id})">
+                                Получить рекомендации
+                            </button>
+                            
+                            
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Функции для работы с изображениями
+        function handleImageError(img) {
+            console.warn(`Не удалось загрузить изображение для книги ${img.dataset.bookId}`);
+            // Заглушка для отсутствующего изображения
+            img.src = '/static/images/error_pic.jpg';
+            img.alt = 'Обложка недоступна';
+            img.classList.add('image-error');
+        }
+
+        function handleImageLoad(img) {
+            img.classList.add('image-loaded');
+            img.style.opacity = '1';
+        }
+
+        // Инициализация
+        document.addEventListener('DOMContentLoaded', renderBooks);
+
+        // Инициализация при загрузке страницы
+        //document.addEventListener('DOMContentLoaded', renderBooks);
+    </script>
+</body>
+</html>
