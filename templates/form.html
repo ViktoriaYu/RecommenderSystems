@@ -1,180 +1,190 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Надо придумать красивое название</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-</head>
+{% extends "base.html" %}
 
-<body>
-    <!-- Шапка -->
-    <header class="header">
-        <div class="container">
-            <h1>Надо придумать красивое название</h1>
-            <p>Надо придумать красивый слоган</p>
-        </div>
-    </header>
+{% block extra_css %}
+<style>
+    .user-info {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: white;
+    }
+    
+    .logout-button {
+        padding: 8px 16px;
+        background: rgba(255, 255, 255, 0.2);
+        color: white;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        border-radius: 5px;
+        text-decoration: none;
+        transition: all 0.3s ease;
+    }
+    
+    .logout-button:hover {
+        background: rgba(255, 255, 255, 0.3);
+    }
+    
+    .context-recommendation-section {
+        text-align: center;
+        margin: 20px 0;
+    }
+    
+    .search-section {
+        background: white;
+        padding: 2rem;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        margin-bottom: 2rem;
+    }
+    
+    .search-instruction {
+        color: #666;
+        margin-top: 10px;
+        font-size: 0.9rem;
+    }
+</style>
+{% endblock %}
 
-    <div class="container">
-        <!-- Область поиска -->
-        <section class="search-section">
-            <div class="search-container">
-                <input type="text" class="search-input" placeholder="Введите название книги, автора или жанр...">
-                <button class="search-button">Найти</button>
-            </div>
-            <div class="quick-buttons">
-                <button class="quick-button">Вот</button>
-                <button class="quick-button">Такая</button>
-                <button class="quick-button">Кошка</button>
-                <button class="quick-button">Тут</button>
-            </div>
-        </section>
-
-        <!-- Сетка книг -->
-        <section class="books-section">
-            <h2 class="section-title">Доступные книги</h2>
-            <div class="books-grid" id="booksGrid">
-                <!-- Книги будут добавляться динамически -->
-                <div class="book-card">
-                    <div class="book-cover">Обложка книги</div>
-                    <div class="book-info">
-                        <h3 class="book-title">Название книги</h3>
-                        <div class="book-actions">
-                            <div class="checkbox-group">
-                                <label class="checkbox-label">
-                                    <input type="checkbox"> Хочу прочитать
-                                </label>
-                                <label class="checkbox-label">
-                                    <input type="checkbox"> Уже читал(а)
-                                </label>
-                            </div>
-                            <button class="action-button">Получить рекомендации</button>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Еще книги... -->
-            </div>
-        </section>
+{% block content %}
+    <!-- Информация о пользователе -->
+    <div class="user-info">
+        <span>Привет, {{ username }}!</span>
+        <a href="{{ url_for('logout') }}" class="logout-button">Выйти</a>
     </div>
 
+    <!-- Область поиска -->
+    <section class="search-section">
+        <form method="GET" action="{{ url_for('index') }}" id="searchForm">
+            <div class="search-container">
+                <input type="text" 
+                       class="search-input" 
+                       name="search" 
+                       id="searchInput"
+                       placeholder="Введите название книги или автора..."
+                       value="{{ search_query }}"
+                       autocomplete="off">
+                <button type="submit" class="search-button">
+                    <i class="fas fa-search"></i> Поиск
+                </button>
+            </div>
+        </form>
         
-        <footer class="footer">
-            <!-- Контактная информация в стиле шапки -->
-            <section class="contact-header">
-                <div class="container"></div>
-                    <h2>Свяжитесь с нами</h2>
-                    <p>Мы всегда рады помочь вам найти идеальную книгу</p>
-                    <div class="contact-info">
-                        <div class="contact-item">
-                            <h4>Email</h4>
-                            <p>support@bookrecommender.com</p>
-                        </div>
-                        <div class="contact-item">
-                            <h4>Телефон</h4>
-                            <p>+7 (000) 000-00-00</p>
-                        </div>
-                        <div class="contact-item">
-                            <h4>Адрес</h4>
-                            <p>А вот все вам расскажи</p>
-                        </div>
-                        <div class="contact-item">
-                            <h4>Социальные сети</h4>
-                            <p>VK | Telegram | YouTube</p>
-                        </div>
-                    </div>
-                </div>            
-            <p>&copy; 2024 BookRecommender AI. Все права защищены.</p>
-            </section>
-        </footer>
+        {% if is_search %}
+        <!-- Информация о результатах поиска -->
+        <div class="search-info">
+            <h3>
+                <i class="fas fa-search"></i> Результаты поиска
+                <a href="{{ url_for('index') }}" class="clear-search">
+                    <i class="fas fa-times"></i> Очистить поиск
+                </a>
+            </h3>
+            <p>
+                <strong>Запрос:</strong> "{{ search_query }}"
+                <span style="margin-left: 20px;">
+                    <strong>Найдено:</strong> {{ results_count }} книг
+                </span>
+            </p>
+            {% if results_count == 0 %}
+            <p style="color: #e74c3c;">
+                <i class="fas fa-exclamation-triangle"></i> 
+                По вашему запросу ничего не найдено. Попробуйте изменить запрос.
+            </p>
+            {% endif %}
+        </div>
+        {% endif %}
+        
+        <!-- Кнопка контекстной рекомендации -->
+        <div class="context-recommendation-section">
+            <button class="context-recommendation-btn" onclick="openContextModal()">
+                <i class="fas fa-magic"></i> Контекстная рекомендация
+            </button>
+            <p class="search-instruction">Опишите ситуацию или настроение, и мы подберем подходящие книги</p>
+        </div>
+    </section>
 
+    <!-- Сетка книг -->
+    <section class="books-section">
+        {% if is_search and results_count == 0 %}
+        <!-- Сообщение о отсутствии результатов -->
+        <div class="no-results">
+            <i class="fas fa-book-open"></i>
+            <h3>Книги не найдены</h3>
+            <p>Попробуйте изменить поисковый запрос или воспользуйтесь контекстной рекомендацией.</p>
+        </div>
+        {% else %}
+        <h2 class="section-title">
+            {% if is_search %}
+                Найденные книги
+            {% else %}
+                Доступные книги
+            {% endif %}
+        </h2>
+        <div class="books-grid" id="booksGrid">
+            <!-- Книги будут добавляться динамически -->
+        </div>
+        <!-- Кнопка "Показать еще" будет добавляться сюда через JavaScript -->
+        {% endif %}
+    </section>
 
-    <script>
-        // Пример данных книг (в реальном приложении будут приходить с сервера)
-        const books = [
-            { id: 1, title: "Мастер и Маргарита", cover: "https://images.cybersport.ru/images/as-is/plain/a6/a69507c4-858f-472f-a0eb-4ab186b0aec8.jpg@jpg" },
-            { id: 2, title: "1984", cover: "https://shikimori.one/uploads/poster/characters/211346/main_alt-3326a8b302b49d097b4c4eadd44efcaf.jpeg" },
-            { id: 3, title: "Преступление и наказание", cover: "https://deti-online.com/i/0/21/67145/print/ocharovatelnyy-anime-kotenok.jpg" },
-            { id: 4, title: "Маленький принц", cover: "https://deti-online.com/i/d/e4/67157/print/malenkiy-anime-kotenok.jpg" },
-            { id: 5, title: "Гарри Поттер и философский камень", cover: "https://deti-online.com/i/0/1a/67152/print/milyy-anime-kotenok-s-paketom-moloka.jpg" },
-            { id: 6, title: "Война и мир", cover: "https://kartinki.pics/uploads/posts/2021-07/1626154099_19-kartinkin-com-p-kotiki-anime-art-anime-krasivo-21.jpg" },
-            { id: 7, title: "Три товарища", cover: "https://zvetnoe.ru/upload/resize_cache/catalog/w750h1000/fb1/fb10371e0c64f1b6f98a2cd504d2e56a.jpg" },
-            { id: 8, title: "Атлант расправил плечи", cover: "https://img09.rl0.ru/afisha/e1200x800i/daily.afisha.ru/uploads/images/3/c0/3c0823a3a563d2bc3c5271538bb7ce75.jpg" }
-        ];
-
-        // Функция для отображения книг
-        function renderBooks() {
-            const booksGrid = document.getElementById('booksGrid');
-            booksGrid.innerHTML = '';
-
-            books.forEach(book => {
-                const bookCard = createBookCard(book);
-                booksGrid.innerHTML += bookCard;
-            });
-        }
-
-        function createBookCard(book) {
-            return `
-                <div class="book-card" data-book-id="${book.id}">
-                    <!-- Обложка книги в прямоугольнике -->
-                    <div class="book-cover-container">
-                        <div class="book-cover">
-                            <img src="${book.cover}" 
-                                class="book-cover-image"
-                                loading="lazy"
-                                data-book-id="${book.id}"
-                                onerror="handleImageError(this)"
-                                onload="handleImageLoad(this)">
-                           
-                        </div>
-                    </div>
-                    
-                    <!-- Информация о книге под обложкой -->
-                    <div class="book-info">
-                        <h3 class="book-title">${book.title}</h3>
-                        <p class="book-author">${book.author}</p>
-                        
-                        <div class="book-actions">
-                            <div class="checkbox-group">
-                                <label class="checkbox-label">
-                                    <input type="checkbox" name="want-to-read-${book.id}"> Хочу прочитать
-                                </label>
-                                <label class="checkbox-label">
-                                    <input type="checkbox" name="already-read-${book.id}"> Уже читал(а)
-                                </label>
-                            </div>
-                            
-                            <button class="action-button" onclick="getRecommendations(${book.id})">
-                                Получить рекомендации
-                            </button>
-                            
-                            
-                        </div>
-                    </div>
+    <!-- Модальное окно для контекстной рекомендации -->
+    <div id="contextModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-magic me-2"></i> Контекстная рекомендация</h3>
+                <button class="close-modal" onclick="closeContextModal()">&times;</button>
+            </div>
+            
+            <div class="modal-body">
+                <div class="context-input-container">
+                    <label class="context-label" for="contextText">
+                        Опишите ситуацию, настроение или тему для которой ищете книгу:
+                    </label>
+                    <textarea 
+                        id="contextText" 
+                        class="context-textarea" 
+                        placeholder="Например: 
+- Ищу книгу для вечернего чтения после тяжелого рабочего дня
+- Хочу погрузиться в исторический роман о Средневековье
+- Нужна вдохновляющая книга о саморазвитии
+- Ищу захватывающий детектив с неожиданной развязкой
+- Хочу почитать что-то легкое и романтическое"
+                        rows="5"></textarea>
                 </div>
-            `;
-        }
+                
+                <!-- Спиннер загрузки -->
+                <div id="loadingSpinner" class="spinner" style="display: none;"></div>
+            </div>
+            
+            <div class="modal-footer">
+                <button class="modal-button btn-secondary" onclick="closeContextModal()">Отмена</button>
+                <button id="getRecommendationsBtn" class="modal-button btn-primary" onclick="getContextRecommendations()">
+                    Получить рекомендации
+                </button>
+            </div>
+        </div>
+    </div>
+{% endblock %}
 
-        // Функции для работы с изображениями
-        function handleImageError(img) {
-            console.warn(`Не удалось загрузить изображение для книги ${img.dataset.bookId}`);
-            // Заглушка для отсутствующего изображения
-            img.src = '/static/images/error_pic.jpg';
-            img.alt = 'Обложка недоступна';
-            img.classList.add('image-error');
-        }
-
-        function handleImageLoad(img) {
-            img.classList.add('image-loaded');
-            img.style.opacity = '1';
-        }
-
-        // Инициализация
-        document.addEventListener('DOMContentLoaded', renderBooks);
-
-        // Инициализация при загрузке страницы
-        //document.addEventListener('DOMContentLoaded', renderBooks);
+{% block scripts %}
+    <!-- Передаем данные из Flask в JavaScript -->
+    <script>
+        const booksData = {{ books | tojson }};
+        const isSearchPage = {{ is_search | tojson }};
+        const searchQuery = "{{ search_query }}";
+        const resultsCount = {{ results_count }};
     </script>
-</body>
-</html>
+    
+    <!-- Подключаем внешний JavaScript файл -->
+    <script src="{{ url_for('static', filename='js/books.js') }}"></script>
+    
+    <!-- Инициализируем книги после загрузки скрипта -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof initBooks === 'function') {
+                initBooks(booksData);
+            }
+        });
+    </script>
+{% endblock %}

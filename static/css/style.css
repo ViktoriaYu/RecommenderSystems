@@ -16,7 +16,30 @@ body {
     margin: 0 auto;
     padding: 0 20px;
 }
+/*Инфо пользователя*/
+.user-info {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: white;
+}
 
+.logout-button {
+    padding: 8px 16px;
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 5px;
+    text-decoration: none;
+    transition: all 0.3s ease;
+}
+
+.logout-button:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
 /* Шапка */
 .header {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -125,6 +148,50 @@ body {
 .search-button:hover {
     background: #5a6fd8;
 }
+
+/*для поиска*/
+
+.search-info {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    border-left: 4px solid #667eea;
+}
+
+.search-info h3 {
+    margin: 0 0 10px 0;
+    color: #333;
+}
+
+.search-info p {
+    margin: 5px 0;
+    color: #666;
+}
+
+.clear-search {
+    color: #667eea;
+    text-decoration: none;
+    margin-left: 10px;
+    font-size: 0.9rem;
+}
+
+.clear-search:hover {
+    text-decoration: underline;
+}
+
+.no-results {
+    text-align: center;
+    padding: 50px;
+    color: #666;
+}
+
+.no-results i {
+    font-size: 3rem;
+    color: #ccc;
+    margin-bottom: 20px;
+}
+
 
 .quick-buttons {
     display: flex;
@@ -427,4 +494,205 @@ body {
     object-fit: contain;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     padding: 20px;
+}
+
+/* Стили для кнопки "Показать еще" */
+.load-more-container {
+    display: flex;
+    justify-content: center;
+    margin: 2rem 0;
+    grid-column: 1 / -1;
+}
+
+.load-more-button {
+    padding: 12px 32px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.load-more-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+    background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+}
+
+.load-more-button:active {
+    transform: translateY(0);
+}
+
+/* Сообщение о отсутствии книг */
+.no-books {
+    text-align: center;
+    padding: 40px;
+    font-size: 18px;
+    color: #666;
+    grid-column: 1 / -1;
+}
+/* Стили для кнопки контекстной рекомендации на главной */
+.context-recommendation-btn {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+    border: none;
+    padding: 14px 28px;
+    border-radius: 8px;
+    font-size: 1.1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 4px 6px rgba(16, 185, 129, 0.2);
+}
+
+.context-recommendation-btn:hover {
+    background: linear-gradient(135deg, #0da271 0%, #047857 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(16, 185, 129, 0.3);
+}
+
+.context-recommendation-btn i {
+    font-size: 1.2rem;
+}
+
+/* Модальное окно для контекстного ввода (упрощенное) */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+.modal-content {
+    background-color: white;
+    margin: 10% auto;
+    padding: 0;
+    width: 90%;
+    max-width: 600px;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.modal-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 20px 30px;
+    border-radius: 12px 12px 0 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 500;
+}
+
+.close-modal {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 28px;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0;
+}
+
+.modal-body {
+    padding: 30px;
+}
+
+.context-input-container {
+    margin-bottom: 25px;
+}
+
+.context-label {
+    display: block;
+    margin-bottom: 10px;
+    font-weight: 500;
+    color: #333;
+    font-size: 1.1rem;
+}
+
+.context-textarea {
+    width: 100%;
+    min-height: 150px;
+    padding: 15px;
+    border: 2px solid #e1e5e9;
+    border-radius: 8px;
+    font-size: 1rem;
+    line-height: 1.5;
+    resize: vertical;
+    font-family: inherit;
+}
+
+.context-textarea:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+.modal-footer {
+    padding: 20px 30px;
+    background-color: #f8f9fa;
+    border-radius: 0 0 12px 12px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 15px;
+}
+
+.modal-button {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-secondary {
+    background-color: #6c757d;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background-color: #5a6268;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+}
+
+/* Загрузочный спиннер */
+.spinner {
+    display: none;
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid #5a6fd8;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    animation: spin 1s linear infinite;
+    margin: 0 auto;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
 }

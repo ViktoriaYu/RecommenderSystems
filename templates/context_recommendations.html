@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Контекстные рекомендации - BookRecommender AI</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .user-info {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: white;
+        }
+        
+        .logout-button {
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 5px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+        
+        .logout-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        
+        .back-button {
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 5px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            margin-right: 10px;
+        }
+        
+        .back-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        
+        .recommendations-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem;
+            border-radius: 10px;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .context-text {
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border-left: 4px solid #667eea;
+        }
+        
+        
+        .recommendation-reason {
+            color: #666;
+            font-size: 0.9rem;
+            margin-top: 5px;
+            font-style: italic;
+        }
+        
+        .book-meta {
+            color: #888;
+            font-size: 0.85rem;
+            margin: 3px 0;
+        }
+        
+        .empty-recommendations {
+            text-align: center;
+            padding: 50px;
+            color: #666;
+        }
+        
+        .empty-recommendations i {
+            font-size: 3rem;
+            color: #ccc;
+            margin-bottom: 20px;
+        }
+        
+        .new-recommendation-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 20px;
+        }
+        
+        .new-recommendation-btn:hover {
+            background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+    <!-- Шапка -->
+    <header class="header">
+        <div class="container">
+            <!-- Навигация -->
+            <div class="user-info">
+                <a href="{{ url_for('index') }}" class="back-button">
+                    <i class="fas fa-arrow-left"></i> Назад
+                </a>
+                <span>Привет, {{ username }}!</span>
+                <a href="{{ url_for('logout') }}" class="logout-button">Выйти</a>
+            </div>
+            
+            <h1>Контекстные рекомендации</h1>
+            <p>Книги, подобранные специально для вас</p>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- Заголовок рекомендаций -->
+        <div class="recommendations-header">
+            <h2><i class="fas fa-magic"></i> Рекомендации на основе вашего запроса</h2>
+            
+            {% if context %}
+            <div class="context-text">
+                <strong>Ваш запрос:</strong> {{ context }}
+            </div>
+            {% endif %}
+            
+            <p>
+                <i class="fas fa-book"></i> Найдено книг: {{ recommendations_count }}
+                {% if recommendations_count > 0 %}
+                <span style="margin-left: 20px;">
+                    <i class="fas fa-star"></i> Отсортировано по релевантности
+                </span>
+                {% endif %}
+            </p>
+        </div>
+
+        <!-- Сетка рекомендованных книг -->
+        {% if recommendations %}
+        <section class="books-section">
+            <div class="books-grid">
+                {% for book in recommendations %}
+                <div class="book-card">
+                    <!-- Обложка книги -->
+                    <div class="book-cover-container">
+                        <div class="book-cover">
+                            <img src="{{ book.cover }}" 
+                                 class="book-cover-image"
+                                 alt="{{ book.title }}"
+                                 loading="lazy"
+                                 onerror="this.src='/static/images/no_cover.jpg'">                            
+                        </div>
+                    </div>
+                    
+                    <!-- Информация о книге -->
+                    <div class="book-info">
+                        <h3 class="book-title" title="{{ book.title }}">
+                            {{ book.title[:50] }}{% if book.title|length > 50 %}...{% endif %}
+                        </h3>
+                        <p class="book-author">{{ book.author }}</p>
+                        
+                        {% if book.year %}
+                        <p class="book-meta"><i class="fas fa-calendar-alt"></i> {{ book.year }}</p>
+                        {% endif %}
+                        
+                        {% if book.publisher %}
+                        <p class="book-meta"><i class="fas fa-building"></i> {{ book.publisher }}</p>
+                        {% endif %}
+                        
+                        <p class="recommendation-reason">
+                            <i class="fas fa-lightbulb"></i> {{ book.reason }}
+                        </p>
+                        
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+        {% else %}
+        <!-- Если рекомендаций нет -->
+        <div class="empty-recommendations">
+            <i class="fas fa-book-open"></i>
+            <h3>Рекомендации не найдены</h3>
+            <p>Попробуйте изменить описание или сделать его более подробным.</p>
+            
+            <button class="new-recommendation-btn" onclick="window.location.href='{{ url_for('index') }}'">
+                <i class="fas fa-plus"></i> Создать новый запрос
+            </button>
+        </div>
+        {% endif %}
+        
+        <!-- Кнопка для нового запроса -->
+        {% if recommendations %}
+        <div style="text-align: center; margin: 40px 0;">
+            <button class="new-recommendation-btn" onclick="window.location.href='{{ url_for('index') }}'">
+                <i class="fas fa-magic"></i> Новый запрос рекомендаций
+            </button>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Футер -->
+    <footer class="footer">
+        <section class="contact-header">
+            <div class="container">
+                <h2>Свяжитесь с нами</h2>
+                <p>Мы всегда рады помочь вам найти идеальную книгу</p>
+                <div class="contact-info">
+                    <div class="contact-item">
+                        <h4>Email</h4>
+                        <p>support@bookrecommender.com</p>
+                    </div>
+                    <div class="contact-item">
+                        <h4>Телефон</h4>
+                        <p>+7 (000) 000-00-00</p>
+                    </div>
+                    <div class="contact-item">
+                        <h4>Адрес</h4>
+                        <p>А вот все вам расскажи</p>
+                    </div>
+                    <div class="contact-item">
+                        <h4>Социальные сети</h4>
+                        <p>VK | Telegram | YouTube</p>
+                    </div>
+                </div>
+            </div>            
+            <p>&copy; 2024 BookRecommender AI. Все права защищены.</p>
+        </section>
+    </footer>
+
+    <script>
+        // Функция для получения рекомендаций для конкретной книги
+        function getRecommendations(bookId) {
+            console.log('Получение рекомендаций для книги:', bookId);
+            // Здесь можно добавить переход на страницу с рекомендациями по книге
+            alert('Рекомендации для книги (ID: ' + bookId + ') - функция в разработке');
+        }
+        
+        // Обработка чекбоксов
+        document.addEventListener('DOMContentLoaded', function() {
+            document.addEventListener('change', function(e) {
+                if (e.target.type === 'checkbox') {
+                    const bookCard = e.target.closest('.book-card');
+                    const bookTitle = bookCard.querySelector('.book-title').textContent;
+                    const action = e.target.checked ? 'отмечена' : 'снята отметка';
+                    
+                    console.log(`Книга "${bookTitle}": ${action}`);
+                }
+            });
+        });
+    </script>
+</body>
+</html>

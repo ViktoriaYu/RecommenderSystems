@@ -1,24 +1,335 @@
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
+import pandas as pd
+import os
+import sys
+import sqlite3
+from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
+app.secret_key = 'your-secret-key-here'
 
-# Маршрут для отображения формы
+# Добавляем пути для импорта
+
+sys.path.append(os.path.join(os.path.dirname(__file__), 'services'))
+
+
+# Импортируем функцию инициализации
+try:
+    from services.init_service import init_recommendation_service, recommendation_service
+except ImportError as e:
+    print(f"❌ Не удалось импортировать init_service: {e}")
+    init_recommendation_service = None
+    recommendation_service = None
+
+# Инициализируем сервис один раз при запуске приложения
+MODEL_AVAILABLE = False
+if init_recommendation_service:
+    # Вызываем инициализацию явно
+    service = init_recommendation_service()
+    MODEL_AVAILABLE = service is not None
+    if MODEL_AVAILABLE:
+        recommendation_service = service
+        print("✅ Сервис рекомендаций успешно инициализирован (один раз)")
+    else:
+        print("⚠️  Модель не найдена или не удалось загрузить")
+        recommendation_service = None
+else:
+    print("❌ Функция инициализации не найдена")
+    recommendation_service = None
+
+# Путь к базе данных
+DB_PATH = 'users.db'
+
+# Загрузка данных из CSV файла
+def load_books_data():
+    try:
+        # Путь к CSV файлу в папке /data
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        csv_path = os.path.join(base_dir, 'data', 'books_with_more_covers.csv')
+        
+        print(f"Пытаюсь загрузить CSV файл из: {csv_path}")
+        
+        books_df = pd.read_csv(csv_path)
+        
+        # Преобразуем DataFrame в список словарей
+        books_data = []
+        for index, row in books_df.iterrows():
+            # Преобразуем isbn13
+            isbn13 = str(row.get('isbn13', ''))
+            if isbn13.endswith('.0'):
+                isbn13 = isbn13[:-2]
+            
+            book = {
+                'id': isbn13,
+                'title': str(row.get('title', 'Название не указано')),
+                'author': str(row.get('author', 'Автор не указан')),
+                'cover': str(row.get('cover_url', '')),
+                'saved_path': str(row.get('saved_path', '')),
+                'status': str(row.get('status', ''))
+            }
+            books_data.append(book)
+        
+        print(f"Успешно загружено {len(books_data)} книг")
+        return books_data
+    except Exception as e:
+        print(f"Ошибка при загрузке CSV файла: {e}")
+        return []
+
+# Инициализация базы данных
+def init_db():
+    conn = sqlite3.connect('users.db')
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            email TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+# Загружаем данные при старте приложения
+init_db()
+all_books_data = load_books_data()
+
+
+# Функция поиска книг
+def search_books(query):
+    if not query or not all_books_data:
+        return []
+    
+    query_lower = query.lower()
+    results = []
+    
+    for book in all_books_data:
+        # Поиск по названию
+        title_match = query_lower in book['title'].lower() if book['title'] else False
+        
+        # Поиск по автору
+        author_match = query_lower in book['author'].lower() if book['author'] else False
+        
+        if title_match or author_match:
+            results.append(book)
+    
+    # Сортируем по релевантности (сначала точные совпадения по названию)
+    results.sort(key=lambda x: (
+        query_lower == x['title'].lower() if x['title'] else False,
+        query_lower in x['title'].lower() if x['title'] else False,
+        query_lower in x['author'].lower() if x['author'] else False
+    ), reverse=True)
+    
+    return results
+
+# Главная страница
 @app.route('/')
 def index():
-    return render_template('form.html')
+    if 'user_id' in session:
+        print(f"user_id = {session.get('user_id', 1)}")
+        # Получаем поисковый запрос если есть
+        search_query = request.args.get('search', '').strip()
+        
+        if search_query:
+            # Ищем книги по запросу
+            search_results = search_books(search_query)
+            return render_template('form.html', 
+                                 books=search_results, 
+                                 username=session.get('username'),
+                                 search_query=search_query,
+                                 is_search=True,
+                                 results_count=len(search_results))
+        else:
+            
+            # Показываем книги с обложками для отображения            
+            return render_template('form.html', 
+                                 books=all_books_data, 
+                                 username=session.get('username'),
+                                 search_query='',
+                                 is_search=False,
+                                 results_count=len(all_books_data))
+    return redirect(url_for('login'))
 
-# Маршрут для обработки данных формы
-@app.route('/submit', methods=['POST'])
-def submit():
-    # Получаем данные из формы
-    name = request.form.get('name')
-    email = request.form.get('email')
+# Страница регистрации
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        username = request.form['username']
+        email = request.form['email']
+        password = request.form['password']
+        confirm_password = request.form['confirm_password']
+        
+        # Проверка паролей
+        if password != confirm_password:
+            flash('Пароли не совпадают', 'error')
+            return render_template('register.html')
+        
+        # Хеширование пароля
+        hashed_password = generate_password_hash(password)
+        
+        try:
+            conn = sqlite3.connect('users.db')
+            cursor = conn.cursor()
+            cursor.execute(
+                'INSERT INTO users (username, email, password) VALUES (?, ?, ?)',
+                (username, email, hashed_password)
+            )
+            conn.commit()
+            conn.close()
+            
+            flash('Регистрация успешна! Теперь вы можете войти.', 'success')
+            return redirect(url_for('login'))
+            
+        except sqlite3.IntegrityError:
+            flash('Пользователь с таким именем или email уже существует', 'error')
+        except Exception as e:
+            flash('Ошибка при регистрации', 'error')
+            print(f"Ошибка регистрации: {e}")
     
-    # Обрабатываем данные (здесь можно добавить логику)
-    print(f"Получены данные: {name}, {email}")
+    return render_template('register.html')
+
+# Страница входа
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+        
+        conn = sqlite3.connect('users.db')
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM users WHERE username = ?', (username,))
+        user = cursor.fetchone()
+        conn.close()
+        
+        if user and check_password_hash(user[3], password):
+            session['user_id'] = user[0]
+            session['username'] = user[1]
+            session['email'] = user[2]
+            flash('Вход выполнен успешно!', 'success')
+            return redirect(url_for('index'))
+        else:
+            flash('Неверное имя пользователя или пароль', 'error')
     
-    # Перенаправляем или возвращаем ответ
-    return f"Спасибо, {name}! Ваш email: {email}"
+    return render_template('login.html')
+
+# Выход
+@app.route('/logout')
+def logout():
+    session.clear()
+    flash('Вы вышли из системы', 'info')
+    return redirect(url_for('login'))
+
+# Новый маршрут для получения рекомендаций
+@app.route('/recommend/<book_id>')
+def recommend(book_id):
+    # Находим книгу по ID
+    book = next((b for b in all_books_data if b['id'] == book_id), None)
+    if book:
+        # Здесь будет логика получения рекомендаций
+        return f"Рекомендации для книги: {book['title']}"
+    else:
+        return "Книга не найдена"
+
+# Страница контекстных рекомендаций
+@app.route('/context_recommendations')
+def context_recommendations_page():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    # Получаем контекст из сессии (если был сохранен)
+    context = session.get('last_context', '')
+    recommendations = session.get('last_recommendations', [])
+    
+    return render_template(
+        'context_recommendations.html',
+        username=session.get('username'),
+        context=context,
+        recommendations=recommendations,
+        recommendations_count=len(recommendations)
+    )
+
+# API для контекстных рекомендаций
+@app.route('/api/context_recommendations', methods=['POST'])
+def get_context_recommendations():
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Необходима авторизация'}), 401
+    
+    try:
+        data = request.get_json()
+        context_text = data.get('context', '').strip()
+        
+        if not context_text:
+            return jsonify({'success': False, 'message': 'Введите текст для рекомендации'}), 400
+        
+        print(f"Получен контекст для рекомендаций: {context_text[:100]}...")
+        
+        # Проверяем доступность сервиса рекомендаций
+        if recommendation_service is None:
+            # Используем тестовые данные если модель не загружена
+            recommendations = generate_test_recommendations(context_text)
+        else:
+            # Используем реальную модель
+            # Получаем user_id из сессии (конвертируем для модели)
+            user_id_for_model = session.get('user_id', 1)
+            
+            # Получаем рекомендации из модели
+            result = recommendation_service.recommend_for_user(
+                user_id=user_id_for_model,
+                context=context_text,
+                top_k=3,
+                max_books=2000  # Можно регулировать производительность
+            )
+
+        if result['status'] == 'success':
+            # Преобразуем рекомендации в нужный формат
+            recommendations = []
+            for rec in result['recommendations']:
+                # Ищем обложку в наших данных
+                cover = ''
+                for book in all_books_data:
+                    if book['title'].lower() == rec['title'].lower():
+                        cover = book['cover']
+                        break
+                
+                recommendations.append({
+                    'id': str(rec.get('book_id', '')),
+                    'title': rec['title'],
+                    'author': rec['author'],
+                    'cover': cover if cover else '/static/images/no_cover.jpg',
+                    'score': rec['score'],
+                    'reason': f"Рекомендовано моделью с оценкой {rec['score']:.2f}"
+                })
+        else:
+            # Если модель вернула ошибку, используем тестовые данные
+            print(f"Ошибка модели: {result.get('message', 'Unknown error')}")
+            recommendations = generate_test_recommendations(context_text)
+
+
+        # Сохраняем в сессии для отображения на отдельной странице
+        session['last_context'] = context_text
+        session['last_recommendations'] = recommendations
+        
+        return jsonify({
+            'success': True,
+            'redirect_url': url_for('context_recommendations_page'),
+            'recommendations_count': len(recommendations)
+        })
+        
+    except Exception as e:
+        print(f"Ошибка при получении контекстных рекомендаций: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+def generate_test_recommendations(context_text):
+    """Генерация тестовых рекомендаций"""
+    # Используем первые 10 книг из загруженных данных как тестовые
+    test_books = all_books_data[:10] if len(all_books_data) > 10 else all_books_data
+    
+    for i, book in enumerate(test_books):
+        book['score'] = 0.9 - (i * 0.1)  # Имитация рейтинга
+        book['reason'] = f'Подходит по теме "{context_text[:20]}..."'
+    
+    return test_books[:4]
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, use_reloader=False)
