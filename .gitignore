@@ -1,0 +1,175 @@
+# Игнорируем конфиденциальные данные
+.env
+.env.local
+.env.*.local
+.secrets/
+keys/
+credentials/
+configs/private/
+*.key
+*.pem
+*.crt
+*.pub
+
+# Файлы с данными и модели
+data/raw/          # исходные сырые данные
+data/processed/    # обработанные данные (если большие)
+data/external/     # внешние данные
+data/interim/      # промежуточные данные
+*.csv
+*.parquet
+*.feather
+*.h5
+*.hdf5
+*.pkl
+*.pickle
+*.joblib
+*.npy
+*.npz
+*.pt
+*.pth
+model/*.pkl
+model/*.joblib
+model/*.h5
+models/            # обученные модели (если большие)
+weights/
+embeddings/
+
+# Векторные базы данных (если используются)
+chroma_db/
+faiss_index/
+annoy_index/
+hnswlib_index/
+qdrant_storage/
+weaviate_data/
+milvus/
+pinecone_cache/
+
+# FastAPI специфичное
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Виртуальные окружения
+venv/
+env/
+.venv/
+venv*/
+env*/
+ENV/
+env.bak/
+venv.bak/
+pythonenv*
+
+# PyCharm
+.idea/
+*.iml
+*.ipr
+*.iws
+.idea/*
+
+# VS Code
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+*.ipynb
+!notebooks/*.ipynb  # если хотите сохранять ноутбуки в папке notebooks
+
+# Логи
+logs/
+*.log
+*.log.*
+log/
+*.logs
+
+# Тестовые данные и отчеты
+test_output/
+coverage/
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+.tox/
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+
+# Документация
+docs/_build/
+docs/build/
+
+# Операционные системы
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Docker
+docker-compose.override.yml
+.dockerignore
+
+# Базы данных (если используете локальные)
+*.db
+*.sqlite
+*.sqlite3
+
+# Временные файлы
+*.tmp
+*.temp
+*~
+*.swp
+*.swo
+
+# Конфигурационные файлы (кроме шаблонов)
+config.yaml
+config.yml
+config.json
+!config.example.yaml
+!config.example.yml
+!config.example.json
+
+# Файлы специфичные для рекомендательных систем
+#als_matrix/
+#als_factors/
+#implicit_model/
+#lightfm_model/
+#surprise_model/
+#tfrs_model/
+#bert_embeddings/
+#sentence_transformers_cache/
+ 
+
+# Кэши
+.cache/
+.caches/
+__pycache__/
+ 
+content_similarity.pkl
