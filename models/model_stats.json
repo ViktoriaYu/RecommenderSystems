@@ -1,0 +1,12 @@
+{
+  "num_users": 53424,
+  "num_items": 10000,
+  "num_interactions": 5976479,
+  "num_train_samples": 11952958,
+  "matrix_shape": [
+    53424,
+    10000
+  ],
+  "matrix_density": 0.022373760856543877,
+  "training_date": "2025-12-11 20:40:23"
+}

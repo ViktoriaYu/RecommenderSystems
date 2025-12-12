@@ -16,10 +16,12 @@ sys.path.append(os.path.join(os.path.dirname(__file__), 'services'))
 # Импортируем функцию инициализации
 try:
     from services.init_service import init_recommendation_service, recommendation_service
+    from services.simple_recommender_service import get_simple_recommender
 except ImportError as e:
     print(f"❌ Не удалось импортировать init_service: {e}")
     init_recommendation_service = None
     recommendation_service = None
+    simple_recommender = None 
 
 # Инициализируем сервис один раз при запуске приложения
 MODEL_AVAILABLE = False
@@ -36,6 +38,18 @@ if init_recommendation_service:
 else:
     print("❌ Функция инициализации не найдена")
     recommendation_service = None
+
+# Инициализация простого сервиса
+try:
+    simple_recommender = get_simple_recommender()
+    #simple_recommender=None
+    if simple_recommender:
+        print()
+    else:
+        print("⚠️  Не удалось загрузить SimpleRecommender")
+except Exception as e:
+    print(f"❌ Ошибка при инициализации SimpleRecommender: {e}")
+    simple_recommender = None
 
 # Путь к базе данных
 DB_PATH = 'users.db'
@@ -127,8 +141,11 @@ def init_db():
 
 # Загружаем данные при старте приложения
 init_db()
-all_books_data = load_books_data()
 books_by_id_dict = {}
+all_books_data = load_books_data()
+print(f"[DEBUG] Создан словарь книг по book_id: {len(books_by_id_dict)} записей")
+print(f"[DEBUG] Пример ключей: {list(books_by_id_dict.keys())[:5]}")
+print(f"[DEBUG] Пример данных первой книги: {list(books_by_id_dict.values())[0] if books_by_id_dict else 'Словарь пуст'}")
 
 # Функция поиска книг
 def search_books(query):
@@ -283,7 +300,11 @@ def context_recommendations_page():
         recommendations_count=len(recommendations)
     )
 
-# API для контекстных рекомендаций
+
+# =============================================
+# API для контекстных рекомендаций (старый сервис)
+# =============================================
+
 @app.route('/api/context_recommendations', methods=['POST'])
 def get_context_recommendations():
     if 'user_id' not in session:
@@ -384,6 +405,182 @@ def generate_test_recommendations(context_text):
         book['reason'] = f'Подходит по теме "{context_text[:20]}..."'
     
     return test_books[:4]
+# =============================================
+# API для простых рекомендаций (SimpleRecommender)
+# =============================================
+
+@app.route('/api/simple/recommend/me')
+def simple_recommend_for_me():
+    """Получить простые рекомендации для текущего пользователя"""
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Необходима авторизация'}), 401
+    
+    try:
+        # Проверяем доступность сервиса рекомендаций
+        if simple_recommender is None:
+            # Используем тестовые данные если модель не загружена
+            recommendations = generate_test_recommendations("ваши персональные рекомендации")
+        else:
+            # Используем реальную модель
+            user_id = session.get('user_id', 1)
+            k=5
+            #k = request.args.get('k', default=6, type=int)
+            
+            # Получаем рекомендации из модели
+            result = simple_recommender.recommend_for_user(
+                user_id=user_id,
+                k=min(k, 20)
+            )
+            # Преобразуем рекомендации в нужный формат
+            recommendations = []
+            if result.get('status') == 'success' and 'recommendations' in result:
+                for rec in result['recommendations']:
+                    # Ищем книгу в наших данных по book_id
+                    rec_book_id = str(rec.get('item_id', ''))
+                    
+                    
+                    # Поиск в словаре по book_id
+                    book_data = None
+                    if rec_book_id in books_by_id_dict:
+                        book_data = books_by_id_dict[rec_book_id]
+                    else:
+                        # Если не нашли по book_id, ищем по названию
+                        for book in all_books_data:
+                            if book['title'].lower() == rec['title'].lower():
+                                book_data = book
+                                break
+
+                    if book_data:
+                        recommendations.append({
+                            'id': book_data.get('id', rec_book_id),
+                            'book_id': rec_book_id,
+                            'title': book_data.get('title', rec.get('title', 'Название не указано')),
+                            'author': book_data.get('author', rec.get('author', 'Автор не указан')),
+                            'cover':  book_data.get('cover', '/static/images/error_pic_4.jpg'),
+                            'score': rec.get('score', 0.5),
+                            'reason': rec.get('reason', f"Рекомендовано на основе ваших оценок")
+                        })
+                    else:
+                        # Если книга не найдена, используем данные из рекомендации
+                        recommendations.append({
+                            'id': rec_book_id,
+                            'book_id': rec_book_id,
+                            'title': rec.get('title', f'Book {rec_book_id}'),
+                            'author': rec.get('author', f'Author of {rec_book_id}'),
+                            'cover': '/static/images/error_pic_1.jpg',
+                            'score': rec.get('score', 0.5),
+                            'reason': rec.get('reason', 'Рекомендовано на основе ваших оценок')
+                        })
+            else:
+                # Если модель вернула ошибку, используем тестовые данные
+                recommendations = generate_test_recommendations("ваши персональные рекомендации")
+        
+        # Возвращаем в том же формате, что и контекстные рекомендации
+        return jsonify({
+            'success': True,
+            'recommendations': recommendations,
+            'recommendations_count': len(recommendations)
+        })
+        
+    except Exception as e:
+        print(f"❌ Ошибка в simple_recommend_for_me: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/api/simple/similar/<book_id>')
+def simple_similar_books(book_id):
+    """Получить похожие книги через SimpleRecommender"""
+    try:
+        # Проверяем доступность сервиса рекомендаций
+        if simple_recommender is None:
+            # Используем тестовые данные если модель не загружена
+            recommendations = generate_test_recommendations(f"похожие на книгу {book_id}")
+            
+            return jsonify({
+                'success': True,
+                'recommendations': recommendations,
+                'recommendations_count': len(recommendations)
+            })
+        
+        k=5
+        #k = request.args.get('k', default=6, type=int)
+        method = request.args.get('method', default='hybrid', type=str)
+        
+        # Допустимые методы
+        valid_methods = ['als', 'content', 'hybrid']
+        if method not in valid_methods:
+            method = 'hybrid'
+        
+        # Получаем похожие книги
+        result = simple_recommender.similar_items(
+            item_id=book_id,
+            k=min(k, 20),
+            method=method
+        )
+        # Преобразуем рекомендации в нужный формат
+        recommendations = []
+        if result.get('status') == 'success' and 'recommendations' in result:
+            # Получаем информацию о базовой книге
+            base_book_info = result.get('base_book', {})
+            base_book_id = base_book_info.get('book_id', book_id)
+            base_book_title = base_book_info.get('title', f'Книга {book_id}')
+            base_book_author = base_book_info.get('author', 'Автор не указан')
+            
+            for rec in result['recommendations']:
+                # Ищем книгу в наших данных по book_id
+                rec_book_id = str(rec.get('book_id', ''))
+                
+                # Поиск в словаре по book_id
+                book_data = None
+                if rec_book_id in books_by_id_dict:
+                    book_data = books_by_id_dict[rec_book_id]
+                else:
+                    # Если не нашли по book_id, ищем по названию
+                    for book in all_books_data:
+                        if book['title'].lower() == rec['title'].lower():
+                            book_data = book
+                            break
+                
+                if book_data:
+                    recommendations.append({
+                        'id': book_data.get('id', rec_book_id),
+                        'book_id': rec_book_id,
+                        'title': book_data.get('title', rec.get('title', 'Название не указано')),
+                        'author': book_data.get('author', rec.get('author', 'Автор не указан')),
+                        'cover': book_data.get('cover', '/static/images/error_pic_4.jpg'),
+                        'score': rec.get('score', 0.5),
+                        'reason': f'Похоже на "{base_book_title}" (сходство: {rec.get("score", 0.5)*100:.1f}%)'
+                    })
+                else:
+                    # Если книга не найдена, используем данные из рекомендации
+                    recommendations.append({
+                        'id': rec_book_id,
+                        'book_id': rec_book_id,
+                        'title': rec.get('title', f'Book {rec_book_id}'),
+                        'author': rec.get('author', f'Author of {rec_book_id}'),
+                        'cover': '/static/images/no_cover.jpg',
+                        'score': rec.get('score', 0.5),
+                        'reason': f'Похоже на "{base_book_title}" (сходство: {rec.get("score", 0.5)*100:.1f}%)'
+                    })
+        else:
+            # Если модель вернула ошибку, используем тестовые данные
+            recommendations = generate_test_recommendations(f"похожие на книгу {book_id}")
+        
+        # Возвращаем в том же формате, что и контекстные рекомендации
+        return jsonify({
+            'success': True,
+            'recommendations': recommendations,
+            'recommendations_count': len(recommendations),
+            'base_book': {
+                'book_id': base_book_id,
+                'title': base_book_title,
+                'author': base_book_author
+            }
+        })
+        
+    except Exception as e:
+        print(f"❌ Ошибка в simple_similar_books: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
 
 if __name__ == '__main__':
-    app.run(debug=True, use_reloader=False)
+    app.run(debug=False, use_reloader=False)
