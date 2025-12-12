@@ -1,203 +1,330 @@
-// Конфигурация пагинации
-let visibleBooksCount = 12;
-const booksPerLoad = 12;
+/**
+ * Контекстные рекомендации - независимый JavaScript модуль
+ * Не зависит от books.js
+ */
 
-// Функция для отображения рекомендованных книг с пагинацией
-function renderRecommendations(booksData) {
-    const booksGrid = document.getElementById('booksGrid');
-    if (!booksGrid) return;
+// Конфигурация
+const config = {
+    defaultCoverImage: '/static/images/no_cover.jpg',
+    errorCoverImages: Array.from({length: 8}, (_, i) => `/static/images/error_pic_${i + 1}.jpg`),
+    maxTitleLength: 50,
+    maxAuthorLength: 30
+};
+
+// Состояние приложения
+let appState = {
+    recommendations: [],
+    context: '',
+    currentPage: 1,
+    itemsPerPage: 12,
+    isLoading: false
+};
+
+// Основная функция инициализации
+function initContextRecommendations(data) {
+    console.log('Инициализация контекстных рекомендаций');
     
-    booksGrid.innerHTML = '';
+    appState.recommendations = data.recommendations || [];
+    appState.context = data.context || '';
     
-    if (!booksData || booksData.length === 0) {
-        booksGrid.innerHTML = '<div class="no-books">Книги не найдены</div>';
+    // Обновляем счетчик
+    updateRecommendationsCount(appState.recommendations.length);
+    
+    // Рендерим рекомендации
+    renderRecommendations();
+    
+    // Управляем видимостью элементов
+    toggleEmptyState();
+    toggleNewRequestButton();
+}
+
+// Функция рендеринга рекомендаций
+function renderRecommendations() {
+    const grid = document.getElementById('recommendationsGrid');
+    if (!grid) {
+        console.error('Элемент recommendationsGrid не найден');
         return;
     }
     
-    // Показываем только visibleBooksCount книг
-    const booksToShow = booksData.slice(0, visibleBooksCount);
+    grid.innerHTML = '';
     
-    booksToShow.forEach(book => {
-        const bookCard = createRecommendationBookCard(book);
-        booksGrid.innerHTML += bookCard;
+    if (appState.recommendations.length === 0) {
+        return;
+    }
+    
+    // Вычисляем, какие книги показывать на текущей странице
+    const startIndex = (appState.currentPage - 1) * appState.itemsPerPage;
+    const endIndex = Math.min(startIndex + appState.itemsPerPage, appState.recommendations.length);
+    const booksToShow = appState.recommendations.slice(startIndex, endIndex);
+    
+    // Рендерим книги
+    booksToShow.forEach((book, index) => {
+        const bookCard = createBookCard(book, startIndex + index);
+        grid.appendChild(bookCard);
     });
     
-    // Добавляем кнопку "Показать еще", если есть еще книги
-    addLoadMoreButton(booksData);
+    // Добавляем пагинацию если нужно
+    addPaginationIfNeeded();
 }
 
-// Функция для создания карточки книги для страницы рекомендаций
-function createRecommendationBookCard(book) {
-    // Проверяем и обрабатываем URL обложки
-    let coverUrl = book.cover;
-    if (!coverUrl || coverUrl === '' || coverUrl === 'NaN' || coverUrl === 'null') {
-        const randomNumber = Math.floor(Math.random() * 8) + 1;
-        coverUrl = `/static/images/error_pic_${randomNumber}.jpg`;
+// Создание карточки книги
+function createBookCard(book, index) {
+    const card = document.createElement('div');
+    card.className = 'book-card';
+    card.dataset.index = index;
+    
+    // Обработка URL обложки
+    let coverUrl = book.cover || book.image_url || '';
+    if (!coverUrl || coverUrl === 'NaN' || coverUrl === 'null' || coverUrl.trim() === '') {
+        const randomIndex = Math.floor(Math.random() * config.errorCoverImages.length);
+        coverUrl = config.errorCoverImages[randomIndex];
     }
     
-    // Обрезаем длинные названия
-    const shortTitle = book.title && book.title.length > 50 ? 
-        book.title.substring(0, 50) + '...' : book.title;
-    const shortAuthor = book.author && book.author.length > 30 ? 
-        book.author.substring(0, 30) + '...' : book.author;
+    // Обработка текстов
+    const title = book.title || 'Название не указано';
+    const author = book.author || 'Автор не указан';
+    const shortTitle = title.length > config.maxTitleLength ? 
+        title.substring(0, config.maxTitleLength) + '...' : title;
+    const shortAuthor = author.length > config.maxAuthorLength ?
+        author.substring(0, config.maxAuthorLength) + '...' : author;
     
-    // Создаем карточку с дополнительной информацией о рекомендации
-    let reasonHtml = '';
-    if (book.reason) {
-        reasonHtml = `
-            <div class="recommendation-reason">
-                <i class="fas fa-lightbulb"></i> ${book.reason}
-            </div>
-        `;
-    }
+    // Форматирование оценки если есть
+    const scoreInfo = book.score !== undefined ? 
+        `<span class="book-score">Оценка: ${book.score.toFixed(2)}</span>` : '';
     
-    let scoreHtml = '';
-    if (book.score !== undefined) {
-        const scorePercent = Math.round(book.score * 100);
-        scoreHtml = `<span class="score-badge">${scorePercent}%</span>`;
-    }
-    
-    return `
-        <div class="book-card">
-            <!-- Обложка книги -->
-            <div class="book-cover-container">
-                <div class="book-cover">
-                    <img src="${coverUrl}" 
-                        class="book-cover-image"
-                        alt="${book.title || 'Название не указано'}"
-                        loading="lazy"
-                        data-book-id="${book.id}"
-                        onerror="handleImageError(this)"
-                        onload="handleImageLoad(this)">
-                </div>
-            </div>
-            
-            <!-- Информация о книге -->
-            <div class="book-info">
-                <h3 class="book-title" title="${book.title || 'Название не указано'}">
-                    ${shortTitle || 'Название не указано'} ${scoreHtml}
-                </h3>
-                <p class="book-author" title="${book.author || 'Автор не указан'}">
-                    ${shortAuthor || 'Автор не указан'}
-                </p>
-                
-                <!-- Дополнительная информация -->
-                ${reasonHtml}
-                
-                <!-- Кнопки действий -->
-                <div class="book-actions">
-                    <div class="checkbox-group">
-                        <label class="checkbox-label">
-                            <input type="checkbox" name="want-to-read-${book.id}"> 
-                            Хочу прочитать
-                        </label>
-                        <label class="checkbox-label">
-                            <input type="checkbox" name="already-read-${book.id}"> 
-                            Уже читал(а)
-                        </label>
-                    </div>
-                    
-                    <button class="action-button" onclick="getBookRecommendations('${book.id}')">
-                        <i class="fas fa-search-plus"></i> Похожие книги
-                    </button>
-                </div>
+    // Создание HTML
+    card.innerHTML = `
+        <div class="book-cover-container">
+            <div class="book-cover">
+                <img src="${coverUrl}" 
+                     class="book-cover-image"
+                     alt="${title}"
+                     loading="lazy"
+                     data-book-id="${book.id || index}"
+                     onerror="handleRecommendationImageError(this)"
+                     onload="handleRecommendationImageLoad(this)">
             </div>
         </div>
-    `;
-}
-
-// Функция для добавления кнопки "Показать еще"
-function addLoadMoreButton(booksData) {
-    const container = document.getElementById('loadMoreContainer');
-    if (!container) return;
-    
-    // Удаляем существующую кнопку, если есть
-    container.innerHTML = '';
-    
-    // Если есть еще книги для показа, добавляем кнопку
-    if (visibleBooksCount < booksData.length) {
-        container.innerHTML = `
-            <div class="load-more-container">
-                <button class="load-more-button" onclick="loadMoreBooks(booksData)">
-                    <i class="fas fa-plus"></i> Показать еще книги
-                    <span class="badge">(${booksData.length - visibleBooksCount} из ${booksData.length})</span>
-                </button>
-            </div>
-        `;
-    }
-}
-
-// Функция для загрузки дополнительных книг
-function loadMoreBooks(booksData) {
-    visibleBooksCount += booksPerLoad;
-    renderRecommendations(booksData);
-    
-    // Плавная прокрутка к новым книгам
-    setTimeout(() => {
-        const booksGrid = document.getElementById('booksGrid');
-        if (booksGrid) {
-            const cards = booksGrid.querySelectorAll('.book-card');
-            if (cards.length > visibleBooksCount - booksPerLoad) {
-                cards[visibleBooksCount - booksPerLoad].scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'nearest'
-                });
-            }
-        }
-    }, 100);
-}
-
-// Функция для получения рекомендаций по конкретной книге
-async function getBookRecommendations(bookId) {
-    try {
-        console.log(`Запрос рекомендаций для книги: ${bookId}`);
         
-        // Показываем индикатор загрузки
-        const button = event.target;
-        const originalText = button.innerHTML;
-        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Поиск...';
-        button.disabled = true;
-        
-        // Отправляем запрос к API
-        const response = await fetch(`/api/book_recommendations/${bookId}`);
-        const result = await response.json();
-        
-        // Восстанавливаем кнопку
-        button.innerHTML = originalText;
-        button.disabled = false;
-        
-        if (result.success) {
-            alert(`Найдено ${result.recommendations.length} похожих книг`);
-        } else {
-            alert('Ошибка: ' + result.message);
-        }
-        
-    } catch (error) {
-        console.error('Ошибка при получении рекомендаций:', error);
-        event.target.innerHTML = originalText;
-        event.target.disabled = false;
-        alert('Произошла ошибка. Попробуйте еще раз.');
-    }
-}
-
-// Инициализация страницы рекомендаций
-function initRecommendationsPage(recommendationsData) {
-    console.log('Страница контекстных рекомендаций загружена');
-    console.log('Всего рекомендаций:', recommendationsData ? recommendationsData.length : 0);
-    console.log('Показываем:', visibleBooksCount);
-    
-    // Отрисовываем рекомендации
-    renderRecommendations(recommendationsData);
-    
-    // Добавляем обработчики для чекбоксов
-    document.addEventListener('change', function(e) {
-        if (e.target.type === 'checkbox') {
-            const bookId = e.target.name.split('-').pop();
-            const action = e.target.name.includes('want-to-read') ? 'want_to_read' : 'already_read';
-            const isChecked = e.target.checked;
+        <div class="book-info">
+            <h3 class="book-title" title="${title}">${shortTitle}</h3>
+            <p class="book-author" title="${author}">${shortAuthor}</p>
             
-            console.log(`Книга ${bookId}: ${action} = ${isChecked}`);
-            // Здесь можно добавить AJAX запрос для сохранения состояния
-        }
-    });
+            ${scoreInfo}
+            
+            ${book.year ? `<p class="book-meta"><i class="fas fa-calendar-alt"></i> ${book.year}</p>` : ''}
+            ${book.publisher ? `<p class="book-meta"><i class="fas fa-building"></i> ${book.publisher}</p>` : ''}
+            
+            ${book.reason ? `
+                <p class="recommendation-reason">
+                    <i class="fas fa-lightbulb"></i> ${book.reason}
+                </p>
+            ` : ''}
+        </div>
+    `;
+    
+    return card;
 }
+
+// Функции для работы с изображениями
+function handleRecommendationImageError(img) {
+    console.warn(`Не удалось загрузить изображение для рекомендации`);
+    
+    const randomIndex = Math.floor(Math.random() * config.errorCoverImages.length);
+    img.src = config.errorCoverImages[randomIndex];
+    img.alt = 'Обложка недоступна';
+    img.classList.add('image-error');
+    img.classList.remove('image-loaded');
+}
+
+function handleRecommendationImageLoad(img) {
+    img.classList.add('image-loaded');
+    img.classList.remove('image-error');
+    img.style.opacity = '1';
+}
+
+// Добавление пагинации
+function addPaginationIfNeeded() {
+    const totalPages = Math.ceil(appState.recommendations.length / appState.itemsPerPage);
+    
+    if (totalPages <= 1) {
+        return;
+    }
+    
+    const container = document.querySelector('.container');
+    let pagination = document.getElementById('recommendationsPagination');
+    
+    // Удаляем старую пагинацию если есть
+    if (pagination) {
+        pagination.remove();
+    }
+    
+    // Создаем новую пагинацию
+    pagination = document.createElement('div');
+    pagination.id = 'recommendationsPagination';
+    pagination.className = 'pagination';
+    
+    // Кнопка "Назад"
+    const prevButton = document.createElement('button');
+    prevButton.className = 'pagination-button';
+    prevButton.disabled = appState.currentPage === 1;
+    prevButton.innerHTML = '<i class="fas fa-chevron-left"></i> Назад';
+    prevButton.onclick = () => changePage(appState.currentPage - 1);
+    
+    // Информация о странице
+    const pageInfo = document.createElement('span');
+    pageInfo.className = 'page-info';
+    pageInfo.textContent = `Страница ${appState.currentPage} из ${totalPages}`;
+    
+    // Кнопка "Вперед"
+    const nextButton = document.createElement('button');
+    nextButton.className = 'pagination-button';
+    nextButton.disabled = appState.currentPage === totalPages;
+    nextButton.innerHTML = 'Вперед <i class="fas fa-chevron-right"></i>';
+    nextButton.onclick = () => changePage(appState.currentPage + 1);
+    
+    pagination.appendChild(prevButton);
+    pagination.appendChild(pageInfo);
+    pagination.appendChild(nextButton);
+    
+    const booksSection = document.querySelector('.books-section');
+    if (booksSection) {
+        booksSection.appendChild(pagination);
+    }
+}
+
+// Смена страницы
+function changePage(newPage) {
+    const totalPages = Math.ceil(appState.recommendations.length / config.itemsPerPage);
+    
+    if (newPage < 1 || newPage > totalPages || newPage === appState.currentPage) {
+        return;
+    }
+    
+    appState.currentPage = newPage;
+    renderRecommendations();
+    
+    // Прокрутка к началу сетки
+    const grid = document.getElementById('recommendationsGrid');
+    if (grid) {
+        grid.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+}
+
+// Обновление счетчика рекомендаций
+function updateRecommendationsCount(count) {
+    const countElement = document.getElementById('recommendationsCount');
+    if (countElement) {
+        countElement.textContent = count;
+    }
+}
+
+// Показать/скрыть состояние "нет рекомендаций"
+function toggleEmptyState() {
+    const emptyElement = document.getElementById('emptyRecommendations');
+    const grid = document.getElementById('recommendationsGrid');
+    
+    if (emptyElement && grid) {
+        if (appState.recommendations.length === 0) {
+            emptyElement.style.display = 'block';
+            grid.style.display = 'none';
+        } else {
+            emptyElement.style.display = 'none';
+            grid.style.display = 'grid';
+        }
+    }
+}
+
+// Показать/скрыть кнопку нового запроса
+function toggleNewRequestButton() {
+    const buttonContainer = document.getElementById('newRequestContainer');
+    
+    if (buttonContainer) {
+        if (appState.recommendations.length > 0) {
+            buttonContainer.style.display = 'block';
+        } else {
+            buttonContainer.style.display = 'none';
+        }
+    }
+}
+
+// Экспорт функций для глобального использования
+window.handleRecommendationImageError = handleRecommendationImageError;
+window.handleRecommendationImageLoad = handleRecommendationImageLoad;
+window.initContextRecommendations = initContextRecommendations;
+
+// Добавляем стили для пагинации если их нет в CSS
+(function() {
+    if (!document.getElementById('contextRecommendationsStyles')) {
+        const style = document.createElement('style');
+        style.id = 'contextRecommendationsStyles';
+        style.textContent = `
+            .pagination {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                gap: 20px;
+                margin: 30px 0;
+                padding: 20px;
+                background: rgba(255, 255, 255, 0.9);
+                border-radius: 10px;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            }
+            
+            .pagination-button {
+                padding: 10px 20px;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                border: none;
+                border-radius: 5px;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                font-size: 0.9rem;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+            
+            .pagination-button:hover:not(:disabled) {
+                background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+                transform: translateY(-2px);
+            }
+            
+            .pagination-button:disabled {
+                background: #cccccc;
+                cursor: not-allowed;
+                transform: none;
+            }
+            
+            .page-info {
+                font-size: 0.9rem;
+                color: #666;
+                font-weight: 500;
+            }
+            
+            .book-score {
+                display: inline-block;
+                background: #ffd700;
+                color: #333;
+                padding: 3px 8px;
+                border-radius: 12px;
+                font-size: 0.8rem;
+                font-weight: bold;
+                margin-bottom: 5px;
+            }
+            
+            .image-loaded {
+                opacity: 1;
+                transition: opacity 0.3s ease;
+            }
+            
+            .image-error {
+                filter: grayscale(100%);
+                opacity: 0.7;
+            }
+        `;
+        document.head.appendChild(style);
+    }
+})();
+
+console.log('context-recommendations.js загружен и готов к использованию');

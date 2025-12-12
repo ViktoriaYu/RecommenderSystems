@@ -45,7 +45,7 @@ class BookRecommendationService:
         
         # Импортируем модель
         try:
-            from ml_models.recommender_model import TextAwareDynamicRecommender
+            from ml_models.context_recommender_model import TextAwareDynamicRecommender
             self.model_class = TextAwareDynamicRecommender
         except ImportError:
             # Если не можем импортировать, создаем локальный класс

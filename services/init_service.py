@@ -16,7 +16,7 @@ def init_recommendation_service():
     try:
         # Определяем путь к модели
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        model_path = os.path.join(base_dir, 'models', 'recommendation_system.pkl')
+        model_path = os.path.join(base_dir, 'models', 'context_recommendation_system.pkl')
 
         # Проверяем существование файла
         if not os.path.exists(model_path):
@@ -24,7 +24,7 @@ def init_recommendation_service():
             return None
         
         # Импортируем сервис
-        from .recommendation_service import BookRecommendationService
+        from .context_recommendation_service import BookRecommendationService
         
         # Создаем экземпляр
         service = BookRecommendationService(model_path)

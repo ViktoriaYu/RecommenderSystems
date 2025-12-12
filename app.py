@@ -40,41 +40,75 @@ else:
 # Путь к базе данных
 DB_PATH = 'users.db'
 
-# Загрузка данных из CSV файла
+# Загрузка данных из Parquet файла
 def load_books_data():
     try:
-        # Путь к CSV файлу в папке /data
+        # Путь к Parquet файлу в папке /data
         base_dir = os.path.dirname(os.path.abspath(__file__))
-        csv_path = os.path.join(base_dir, 'data', 'books_with_more_covers.csv')
+        parquet_path = os.path.join(base_dir, 'data', 'books_result.parquet')
         
-        print(f"Пытаюсь загрузить CSV файл из: {csv_path}")
+        print(f"Пытаюсь загрузить Parquet файл из: {parquet_path}")
         
-        books_df = pd.read_csv(csv_path)
+        # Проверяем существование файла
+        if not os.path.exists(parquet_path):
+            print(f"❌ Файл не найден: {parquet_path}")
+            return []
+        
+        # Загружаем данные из Parquet
+        books_df = pd.read_parquet(parquet_path)
+        
+        # Выводим информацию о загруженных данных для отладки
+        print(f"Успешно загружено {len(books_df)} книг")
+        
+        # Создаем словарь для быстрого поиска книг по book_id
+        books_by_id = {}
         
         # Преобразуем DataFrame в список словарей
         books_data = []
         for index, row in books_df.iterrows():
+            # Получаем book_id как строку
+            book_id = str(row.get('book_id', ''))
+            
             # Преобразуем isbn13
             isbn13 = str(row.get('isbn13', ''))
             if isbn13.endswith('.0'):
                 isbn13 = isbn13[:-2]
             
+            # Получаем cover_url
+            cover_url = str(row.get('cover_url', '')) if pd.notna(row.get('cover_url')) else ''
+            
+            # Формируем книгу в нужном формате
             book = {
-                'id': isbn13,
+                'book_id': book_id,
+                'id': isbn13 if isbn13 else book_id,  # Для обратной совместимости оставляем id
+                'isbn13': isbn13,
                 'title': str(row.get('title', 'Название не указано')),
-                'author': str(row.get('author', 'Автор не указан')),
-                'cover': str(row.get('cover_url', '')),
-                'saved_path': str(row.get('saved_path', '')),
-                'status': str(row.get('status', ''))
+                'author': str(row.get('authors', 'Автор не указан')),
+                'cover': cover_url,
+                'saved_path': str(row.get('cover_path', '')) if pd.notna(row.get('cover_path', '')) else '',
+                'status': ''  # Поле для статуса
             }
-            books_data.append(book)
+            
+            # Проверяем, есть ли хотя бы название
+            if book['title'] != 'Название не указано':
+                books_data.append(book)
+                # Сохраняем в словаре для быстрого поиска
+                books_by_id[book_id] = book
         
-        print(f"Успешно загружено {len(books_data)} книг")
+        print(f"Успешно обработано {len(books_data)} книг")
+        
+        # Сохраняем словарь для быстрого поиска в глобальной переменной
+        global books_by_id_dict
+        books_by_id_dict = books_by_id
+        
         return books_data
+        
     except Exception as e:
-        print(f"Ошибка при загрузке CSV файла: {e}")
+        print(f"Ошибка при загрузке Parquet файла: {e}")
+        import traceback
+        traceback.print_exc()
         return []
-
+    
 # Инициализация базы данных
 def init_db():
     conn = sqlite3.connect('users.db')
@@ -94,7 +128,7 @@ def init_db():
 # Загружаем данные при старте приложения
 init_db()
 all_books_data = load_books_data()
-
+books_by_id_dict = {}
 
 # Функция поиска книг
 def search_books(query):
@@ -277,7 +311,7 @@ def get_context_recommendations():
             result = recommendation_service.recommend_for_user(
                 user_id=user_id_for_model,
                 context=context_text,
-                top_k=3,
+                top_k=12,
                 max_books=2000  # Можно регулировать производительность
             )
 
@@ -285,21 +319,41 @@ def get_context_recommendations():
             # Преобразуем рекомендации в нужный формат
             recommendations = []
             for rec in result['recommendations']:
-                # Ищем обложку в наших данных
-                cover = ''
-                for book in all_books_data:
-                    if book['title'].lower() == rec['title'].lower():
-                        cover = book['cover']
-                        break
+                # Ищем книгу в наших данных по book_id
+                rec_book_id = str(rec.get('book_id', ''))
                 
-                recommendations.append({
-                    'id': str(rec.get('book_id', '')),
-                    'title': rec['title'],
-                    'author': rec['author'],
-                    'cover': cover if cover else '/static/images/no_cover.jpg',
-                    'score': rec['score'],
-                    'reason': f"Рекомендовано моделью с оценкой {rec['score']:.2f}"
-                })
+                # Поиск в словаре по book_id
+                book_data = None
+                if rec_book_id in books_by_id_dict:
+                    book_data = books_by_id_dict[rec_book_id]
+                else:
+                    # Если не нашли по book_id, ищем по названию (для обратной совместимости)
+                    for book in all_books_data:
+                        if book['title'].lower() == rec['title'].lower():
+                            book_data = book
+                            break
+                
+                if book_data:
+                    recommendations.append({
+                        'id': book_data.get('id', ''),
+                        'book_id': book_data.get('book_id', ''),
+                        'title': rec['title'],
+                        'author': rec['author'],
+                        'cover': book_data.get('cover', '/static/images/error_pic_4.jpg'),
+                        'score': rec['score'],
+                        'reason': f"Рекомендовано моделью с оценкой {rec['score']:.2f}"
+                    })
+                else:
+                    # Если книга не найдена, используем данные из рекомендации
+                    recommendations.append({
+                        'id': rec_book_id,
+                        'book_id': rec_book_id,
+                        'title': rec['title'],
+                        'author': rec['author'],
+                        'cover': '/static/images/no_cover.jpg',
+                        'score': rec['score'],
+                        'reason': f"Рекомендовано моделью с оценкой {rec['score']:.2f}"
+                    })
         else:
             # Если модель вернула ошибку, используем тестовые данные
             print(f"Ошибка модели: {result.get('message', 'Unknown error')}")
