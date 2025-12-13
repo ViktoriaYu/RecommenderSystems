@@ -52,7 +52,7 @@ except Exception as e:
     simple_recommender = None
 
 # Путь к базе данных
-DB_PATH = 'users.db'
+DB_PATH = 'books_recommender.db'
 
 # Загрузка данных из Parquet файла
 def load_books_data():
@@ -111,38 +111,18 @@ def load_books_data():
         
         print(f"Успешно обработано {len(books_data)} книг")
         
-        # Сохраняем словарь для быстрого поиска в глобальной переменной
-        global books_by_id_dict
-        books_by_id_dict = books_by_id
         
-        return books_data
+        return books_data, books_by_id
         
     except Exception as e:
         print(f"Ошибка при загрузке Parquet файла: {e}")
         import traceback
         traceback.print_exc()
         return []
-    
-# Инициализация базы данных
-def init_db():
-    conn = sqlite3.connect('users.db')
-    cursor = conn.cursor()
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE NOT NULL,
-            email TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    conn.commit()
-    conn.close()
-
+ 
 # Загружаем данные при старте приложения
-init_db()
-books_by_id_dict = {}
-all_books_data = load_books_data()
+
+all_books_data, books_by_id_dict = load_books_data()
 print(f"[DEBUG] Создан словарь книг по book_id: {len(books_by_id_dict)} записей")
 print(f"[DEBUG] Пример ключей: {list(books_by_id_dict.keys())[:5]}")
 print(f"[DEBUG] Пример данных первой книги: {list(books_by_id_dict.values())[0] if books_by_id_dict else 'Словарь пуст'}")
@@ -220,12 +200,19 @@ def register():
         hashed_password = generate_password_hash(password)
         
         try:
-            conn = sqlite3.connect('users.db')
+            conn = sqlite3.connect(DB_PATH)
             cursor = conn.cursor()
+
+            # Генерируем уникальный user_id
+            cursor.execute('SELECT MAX(user_id) FROM users')
+            max_id = cursor.fetchone()[0]
+            new_user_id = (max_id or 0) + 1
+
             cursor.execute(
-                'INSERT INTO users (username, email, password) VALUES (?, ?, ?)',
-                (username, email, hashed_password)
+                'INSERT INTO users (user_id, username, email, password) VALUES (?, ?, ?, ?)',
+                (new_user_id, username, email, hashed_password)
             )
+
             conn.commit()
             conn.close()
             
@@ -247,21 +234,21 @@ def login():
         username = request.form['username']
         password = request.form['password']
         
-        conn = sqlite3.connect('users.db')
+        conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         cursor.execute('SELECT * FROM users WHERE username = ?', (username,))
         user = cursor.fetchone()
         conn.close()
         
         if user and check_password_hash(user[3], password):
-            session['user_id'] = user[0]
+            session['user_id'] = user[0]  # user_id теперь в первом столбце
             session['username'] = user[1]
             session['email'] = user[2]
             flash('Вход выполнен успешно!', 'success')
             return redirect(url_for('index'))
         else:
             flash('Неверное имя пользователя или пароль', 'error')
-    
+            
     return render_template('login.html')
 
 # Выход

@@ -95,8 +95,6 @@ pythonenv*
 
 # Jupyter Notebook
 .ipynb_checkpoints/
-*.ipynb
-!notebooks/*.ipynb  # если хотите сохранять ноутбуки в папке notebooks
 
 # Логи
 logs/
