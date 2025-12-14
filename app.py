@@ -509,8 +509,12 @@ def simple_similar_books(book_id):
             # Получаем информацию о базовой книге
             base_book_info = result.get('base_book', {})
             base_book_id = base_book_info.get('book_id', book_id)
-            base_book_title = base_book_info.get('title', f'Книга {book_id}')
-            base_book_author = base_book_info.get('author', 'Автор не указан')
+            #base_book_title = base_book_info.get('title', f'Книга {book_id}')
+            #base_book_author = base_book_info.get('author', 'Автор не указан')
+
+            base_book_data = books_by_id_dict[base_book_id]
+            base_book_title = base_book_data.get('title', f'Книга {book_id}')
+            base_book_author = base_book_data.get('author', 'Автор не указан')
             
             for rec in result['recommendations']:
                 # Ищем книгу в наших данных по book_id

@@ -89,8 +89,6 @@ function createBookCard(book, index) {
         author.substring(0, config.maxAuthorLength) + '...' : author;
     
     // Форматирование оценки если есть
-    const scoreInfo = book.score !== undefined ? 
-        `<span class="book-score">Оценка: ${book.score.toFixed(2)}</span>` : '';
     
     // Создание HTML
     card.innerHTML = `
@@ -110,16 +108,9 @@ function createBookCard(book, index) {
             <h3 class="book-title" title="${title}">${shortTitle}</h3>
             <p class="book-author" title="${author}">${shortAuthor}</p>
             
-            ${scoreInfo}
-            
             ${book.year ? `<p class="book-meta"><i class="fas fa-calendar-alt"></i> ${book.year}</p>` : ''}
             ${book.publisher ? `<p class="book-meta"><i class="fas fa-building"></i> ${book.publisher}</p>` : ''}
             
-            ${book.reason ? `
-                <p class="recommendation-reason">
-                    <i class="fas fa-lightbulb"></i> ${book.reason}
-                </p>
-            ` : ''}
         </div>
     `;
     
