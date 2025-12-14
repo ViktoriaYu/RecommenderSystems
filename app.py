@@ -5,6 +5,34 @@ import sys
 import sqlite3
 from werkzeug.security import generate_password_hash, check_password_hash
 
+import time
+import json
+from datetime import datetime
+
+LOG_PATH = "inference_logs.jsonl"
+
+def log_inference(
+    endpoint: str,
+    user_id: int,
+    model: str,
+    inference_time: float,
+    status: str,
+    **kwargs
+):
+    log_record = {
+        "timestamp": datetime.utcnow().isoformat(),
+        "endpoint": endpoint,
+        "user_id": user_id,
+        "model": model,
+        "inference_time_ms": round(inference_time * 1000, 3),
+        "status": status,
+        **kwargs
+    }
+
+    # режим ДОЗАПИСИ
+    with open(LOG_PATH, "a", encoding="utf-8") as f:
+        f.write(json.dumps(log_record, ensure_ascii=False) + "\n")
+
 app = Flask(__name__)
 app.secret_key = 'your-secret-key-here'
 
@@ -123,9 +151,9 @@ def load_books_data():
 # Загружаем данные при старте приложения
 
 all_books_data, books_by_id_dict = load_books_data()
-print(f"[DEBUG] Создан словарь книг по book_id: {len(books_by_id_dict)} записей")
-print(f"[DEBUG] Пример ключей: {list(books_by_id_dict.keys())[:5]}")
-print(f"[DEBUG] Пример данных первой книги: {list(books_by_id_dict.values())[0] if books_by_id_dict else 'Словарь пуст'}")
+#print(f"[DEBUG] Создан словарь книг по book_id: {len(books_by_id_dict)} записей")
+#print(f"[DEBUG] Пример ключей: {list(books_by_id_dict.keys())[:5]}")
+#print(f"[DEBUG] Пример данных первой книги: {list(books_by_id_dict.values())[0] if books_by_id_dict else 'Словарь пуст'}")
 
 # Функция поиска книг
 def search_books(query):
@@ -314,15 +342,32 @@ def get_context_recommendations():
             # Используем реальную модель
             # Получаем user_id из сессии (конвертируем для модели)
             user_id_for_model = session.get('user_id', 1)
-            
+            k=12
+            start_time = time.perf_counter()
+
             # Получаем рекомендации из модели
             result = recommendation_service.recommend_for_user(
                 user_id=user_id_for_model,
                 context=context_text,
-                top_k=12,
+                top_k=k,
                 max_books=2000  # Можно регулировать производительность
             )
 
+            
+            inference_time = time.perf_counter() - start_time
+            '''
+            log_inference(
+                endpoint="/api/context_recommendations",
+                user_id=user_id_for_model,
+                model="context_recommender",
+                inference_time=inference_time,
+                status=result.get("status", "error"),
+                top_k=k,
+                max_books=2000,
+                recommendations_count=len(result.get("recommendations", []))
+            )
+            '''
+        
         if result['status'] == 'success':
             # Преобразуем рекомендации в нужный формат
             recommendations = []
@@ -362,6 +407,7 @@ def get_context_recommendations():
                         'score': rec['score'],
                         'reason': f"Рекомендовано моделью с оценкой {rec['score']:.2f}"
                     })
+
         else:
             # Если модель вернула ошибку, используем тестовые данные
             print(f"Ошибка модели: {result.get('message', 'Unknown error')}")
@@ -410,14 +456,30 @@ def simple_recommend_for_me():
         else:
             # Используем реальную модель
             user_id = session.get('user_id', 1)
-            k=5
+            k=10
             #k = request.args.get('k', default=6, type=int)
-            
+            start_time = time.perf_counter()
             # Получаем рекомендации из модели
             result = simple_recommender.recommend_for_user(
                 user_id=user_id,
                 k=min(k, 20)
             )
+            inference_time = time.perf_counter() - start_time
+            '''
+            log_inference(
+                endpoint="/api/simple/recommend/me",
+                user_id=user_id,
+                model="simple_recommender",
+                inference_time=inference_time,
+                status=result.get("status", "error"),
+                top_k=k,
+                max_books=0,
+                recommendations_count=len(result.get("recommendations", []))
+            )
+            '''
+
+
+
             # Преобразуем рекомендации в нужный формат
             recommendations = []
             if result.get('status') == 'success' and 'recommendations' in result:
@@ -488,7 +550,7 @@ def simple_similar_books(book_id):
                 'recommendations_count': len(recommendations)
             })
         
-        k=5
+        k=9
         #k = request.args.get('k', default=6, type=int)
         method = request.args.get('method', default='hybrid', type=str)
         
@@ -496,13 +558,28 @@ def simple_similar_books(book_id):
         valid_methods = ['als', 'content', 'hybrid']
         if method not in valid_methods:
             method = 'hybrid'
-        
+        start_time = time.perf_counter()
+
         # Получаем похожие книги
         result = simple_recommender.similar_items(
             item_id=book_id,
             k=min(k, 20),
             method=method
         )
+        # Замер времени инференса
+        inference_time = time.perf_counter() - start_time
+        '''
+        log_inference(
+                endpoint="api/simple/similar",
+                user_id=book_id,
+                model="book_simple_recommender",
+                inference_time=inference_time,
+                status=result.get("status", "error"),
+                top_k=k,
+                max_books=0,
+                recommendations_count=len(result.get("recommendations", []))
+            )
+        '''
         # Преобразуем рекомендации в нужный формат
         recommendations = []
         if result.get('status') == 'success' and 'recommendations' in result:

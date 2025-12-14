@@ -88,7 +88,9 @@ class SimpleRecommender:
             user_id_str = str(user_id)
             
             # Если новый пользователь - популярные книги
-            if user_id not in self.user_to_idx:
+            #print(self.user_to_idx.items()[:5])
+            if user_id_str not in self.user_to_idx:
+                print(f'User is here')
                 recommendations = []
                 for i, item_id in enumerate(self.popular_items[:k]):
                     item_id_str = str(item_id)
@@ -108,14 +110,14 @@ class SimpleRecommender:
                 }
             
             # Существующий пользователь
-            user_idx = self.user_to_idx[user_id]
+            user_idx = self.user_to_idx[user_id_str]
             
             # Получаем рекомендации от ALS
             als_indices, als_scores = self.als_model.recommend(
                 user_idx, 
                 self.user_item_matrix[user_idx], 
                 N=self.params.get('als_candidates', 100), 
-                filter_already_liked_items=True
+                #filter_already_liked_items=True
             )
             
             # Преобразуем в item_id
@@ -137,9 +139,10 @@ class SimpleRecommender:
             # Формируем ответ
             recommendations = []
             for item_id, score in final_items:
-                item_id_str = str(item_id)
+                #item_id_str = str(item_id)
+                item_id_str = self.item_to_idx[item_id]
                 recommendations.append({
-                    'book_id': item_id_str,
+                    'item_id': item_id_str,
                     'score': round(score, 4),
                     'title': f'Book {item_id_str}',
                     'author': f'Author of {item_id_str}',

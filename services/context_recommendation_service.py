@@ -31,7 +31,7 @@ class BookRecommendationService:
                 os.path.dirname(__file__), 
                 '..', 
                 'models', 
-                'recommendation_system.pkl'
+                'enhanced_recommendation_system.pkl'
             )
         
         print("[recommendation_service.py]", model_path)
@@ -49,7 +49,7 @@ class BookRecommendationService:
             self.model_class = TextAwareDynamicRecommender
         except ImportError:
             # Если не можем импортировать, создаем локальный класс
-            self.model_class = self._create_model_class()
+            print(f"[recommendation_service.py] Модель не инициализировалась")
         
         # Загружаем модель
         self.model = self.model_class(**self.system['model_config'])
@@ -60,94 +60,21 @@ class BookRecommendationService:
         self.books_df = self.system['books_data']
         self.user_encoder = self.system['user_encoder']
         self.author_encoder = self.system['author_encoder']
+
+        # Улучшенные структуры
+        self.genre_keywords = self.system["genre_keywords"]
+        self.book_genres = self.system["book_genres"]
         
         # Устройство
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         self.model.to(self.device)
         
         print(f" Сервис готов:")
-        print(f"   • Книг в базе: {len(self.books_df)}")
+        print(f"   • Книг в базе: {len(self.books_df)}")        
+        print(f"   • Жанров: {len(self.genre_keywords)}")
         print(f"   • Устройство: {self.device}")
         print(f"   • Пользователей: {self.system['model_config']['num_users']}")
         print(f"   • Авторов: {self.system['model_config']['num_authors']}")
-    
-    def _create_model_class(self):
-        """Создает класс модели локально, если не удалось импортировать"""
-        import torch.nn as nn
-        import torch.nn.functional as F
-        
-        class TextAwareDynamicRecommender(nn.Module):
-            """Локальная версия модели"""
-            
-            def __init__(self, num_users, num_books, num_authors, 
-                         text_encoder_dim=128, user_dim=128, book_dim=128, author_dim=64):
-                super().__init__()
-                
-                # Основные эмбеддинги
-                self.user_embedding = nn.Embedding(num_users, user_dim)
-                self.book_embedding = nn.Embedding(num_books, book_dim)
-                self.author_embedding = nn.Embedding(num_authors, author_dim)
-                
-                # Текстовый энкодер
-                self.text_encoder = nn.Sequential(
-                    nn.Embedding(128, 32),
-                    nn.Flatten(),
-                    nn.Linear(32 * 256, 128),
-                    nn.ReLU(),
-                    nn.Dropout(0.3),
-                    nn.Linear(128, 64),
-                    nn.ReLU(),
-                    nn.Linear(64, 64)
-                )
-                
-                # Проекция книги в текстовое пространство
-                self.book_to_text_space = nn.Sequential(
-                    nn.Linear(book_dim + author_dim, 128),
-                    nn.ReLU(),
-                    nn.Linear(128, 64)
-                )
-                
-                # Основная рекомендательная часть
-                self.recommender = nn.Sequential(
-                    nn.Linear(user_dim + book_dim + author_dim + 64, 256),
-                    nn.ReLU(),
-                    nn.Dropout(0.3),
-                    nn.Linear(256, 128),
-                    nn.ReLU(),
-                    nn.Linear(128, 1),
-                    nn.Sigmoid()
-                )
-            
-            def forward(self, user_ids, book_ids, author_ids, text_tensor=None):
-                """Forward pass"""
-                user_emb = self.user_embedding(user_ids)
-                book_emb = self.book_embedding(book_ids)
-                author_emb = self.author_embedding(author_ids)
-                
-                if text_tensor is not None:
-                    # Кодируем текст
-                    text_emb = self.text_encoder(text_tensor)
-                    
-                    # Проецируем книгу
-                    book_features = torch.cat([book_emb, author_emb], dim=1)
-                    book_text_emb = self.book_to_text_space(book_features)
-                    
-                    # Вычисляем сходство
-                    similarity = F.cosine_similarity(text_emb, book_text_emb, dim=1)
-                    
-                    # Объединяем всё
-                    combined = torch.cat([user_emb, book_emb, author_emb, text_emb], dim=1)
-                    rating = self.recommender(combined)
-                    
-                    return rating, similarity.unsqueeze(1)
-                else:
-                    # Без текста
-                    combined = torch.cat([user_emb, book_emb, author_emb, 
-                                         torch.zeros_like(book_emb)], dim=1)
-                    rating = self.recommender(combined)
-                    return rating
-        
-        return TextAwareDynamicRecommender
     
     def _text_to_tensor(self, text: str) -> torch.Tensor:
         """Конвертирует текст в тензор"""
@@ -155,6 +82,46 @@ class BookRecommendationService:
         if len(chars) < 256:
             chars += [0] * (256 - len(chars))
         return torch.tensor([chars], dtype=torch.long).to(self.device)
+    
+    def _detect_query_genres(self, query: str) -> List[str]:
+        """Определяет жанры из текстового запроса"""
+        query_lower = query.lower()
+        detected_genres = []
+        
+        for genre, keywords in self.genre_keywords.items():
+            for keyword in keywords:
+                if keyword in query_lower:
+                    detected_genres.append(genre)
+                    break
+        
+        return detected_genres if detected_genres else ['general']
+
+    def _get_genre_multiplier(self, query_genres: List[str], book_id: int) -> float:
+        """Вычисляет множитель жанра"""
+        book_genres = self.book_genres.get(book_id, ['general'])
+        
+        # Проверяем совпадение жанров
+        if query_genres and query_genres[0] != 'general':
+            genre_match = any(genre in book_genres for genre in query_genres)
+            if genre_match:
+                return 1.5  # Усиление для подходящего жанра
+        
+        return 1.0
+    
+    def _get_title_boost(self, query: str, title: str) -> float:
+        """Вычисляет усиление по совпадению слов в названии"""
+        if not isinstance(title, str):
+            return 1.0
+        
+        query_words = query.lower().split()
+        title_lower = title.lower()
+        boost = 1.0
+        
+        for word in query_words:
+            if len(word) > 3 and word in title_lower:
+                boost *= 1.1
+        
+        return min(boost, 1.3)  # Ограничиваем максимальное усиление
     
     def _get_author_encoded(self, author: str) -> int:
         """Кодирует автора"""
@@ -175,7 +142,10 @@ class BookRecommendationService:
         user_id: int, 
         context: str = "",
         top_k: int = 3,
-        max_books: int = 2000
+        max_books: int = 2000,
+        context_weight: float = 0.7,
+        genre_boost: bool = True,
+        title_boost: bool = True,
     ) -> Dict[str, Any]:
         """
         Рекомендации для конкретного пользователя с контекстом
@@ -192,96 +162,112 @@ class BookRecommendationService:
         start_time = datetime.now()
         
         try:
-            # Кодируем пользователя
-            user_encoded = self._get_user_encoded(user_id)
-            if user_encoded is None:
-                return {
-                    "status": "error",
-                    "message": f"User {user_id} not found in model",
-                    "user_id": user_id,
-                    "timestamp": datetime.now().isoformat()
-                }
-        except Exception as e:
+            user_encoded = self.user_encoder.transform([user_id])[0]
+        except ValueError:
             return {
                 "status": "error",
-                "message": f"Error encoding user: {str(e)}",
+                "message": f"User {user_id} not found",
                 "user_id": user_id,
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.now().isoformat(),
             }
         
+        query_genres = self._detect_query_genres(context)
+
         # Подготавливаем тензоры
         user_tensor = torch.tensor([user_encoded], dtype=torch.long).to(self.device)
-        context_tensor = self._text_to_tensor(context) if context else None
+        context_tensor = self._text_to_tensor(context)
         
         # Ограничиваем количество книг для скорости
         books_to_check = self.books_df.head(max_books)
-        
         recommendations = []
         
         # Оцениваем книги
         for _, row in books_to_check.iterrows():
-            book_tensor = torch.tensor([row['book_id'] - 1], dtype=torch.long).to(self.device)
+            book_id = int(row["book_id"])
+
+            book_tensor = torch.tensor([book_id - 1], dtype=torch.long).to(self.device)
 
             try:
-                author_encoded = self.author_encoder.transform([row['authors']])[0]
-            except:
+                author_encoded = self.author_encoder.transform([row["authors"]])[0]
+            except Exception:
                 author_encoded = 0
 
             author_tensor = torch.tensor([author_encoded], dtype=torch.long).to(self.device)
-            
+
             with torch.no_grad():
-                output = self.model(user_tensor, book_tensor, author_tensor, context_tensor)
-                
+                output = self.model(
+                    user_tensor,
+                    book_tensor,
+                    author_tensor,
+                    context_tensor
+                )
+
                 if isinstance(output, tuple):
-                    rating_pred, similarity = output
-                    rating = rating_pred.item()
-                    sim = similarity.item()
+                    rating, similarity = output
+                    rating = rating.item()
+                    similarity = similarity.item()
                 else:
                     rating = output.item()
-                    sim = 0.0
+                    similarity = 0.0
 
-                # Комбинированный score
-                score = 0.7 * rating + 0.3 * max(0, sim)
+            # Базовый score
+            base_score = (1 - context_weight) * rating + context_weight * max(0, similarity)
+
+            # Применяем улучшения
+            final_score = base_score
+            applied_boosts = []
+
+            if genre_boost:
+                genre_multiplier = self._get_genre_multiplier(query_genres, book_id)
+                if genre_multiplier > 1.0:
+                    final_score *= genre_multiplier
+                    applied_boosts.append(f"genre×{genre_multiplier:.1f}")
+            
+            if title_boost:
+                title = row['original_title']
+                title_multiplier = self._get_title_boost(context, title)
+                if title_multiplier > 1.0:
+                    final_score *= title_multiplier
+                    applied_boosts.append(f"title×{title_multiplier:.1f}")
 
             recommendations.append({
-                "book_id": int(row['book_id']),
+                "book_id": int(book_id),
                 "title": row['original_title'],
                 "author": row['authors'],
-                "score": float(score),
+                "genres": row['genres'] if 'genres' in row else self.book_genres.get(book_id, ['general']),
+                "score": float(final_score),
+                "base_score": float(base_score),
                 "rating": float(rating),
-                "similarity": float(sim)
+                #"similarity": float(sim),
+                "applied_boosts": applied_boosts,
+                "genre_match": genre_boost and self._get_genre_multiplier(query_genres, book_id) > 1.0
             })
-        
-        # Сортировка
-        recommendations.sort(key=lambda x: x['score'], reverse=True)
-        
-        # Формируем ответ
+
+        recommendations.sort(key=lambda x: x["score"], reverse=True)
+
         processing_time = (datetime.now() - start_time).total_seconds()
-        
-        result = {
+
+        return {
             "status": "success",
             "user_id": user_id,
             "context": context,
-            "timestamp": datetime.now().isoformat(),
+            "detected_genres": query_genres,
             "processing_time_seconds": round(processing_time, 3),
             "recommendations": [
                 {
-                    "item_id": rec["book_id"],
-                    "score": rec["score"],
-                    "title": rec["title"],
-                    "author": rec["author"]
+                    "rank": i + 1,
+                    "book_id": r["book_id"],
+                    "score": r["score"],
+                    "title": r["title"],
+                    "author": r["author"],
+                    "genres": r["genres"],
+                    "rating": r["rating"],
+                    #"similarity": r["similarity"],
+                    "applied_boosts": r["applied_boosts"],
                 }
-                for rec in recommendations[:top_k]
+                for i, r in enumerate(recommendations[:top_k])
             ],
-            "metadata": {
-                "total_books_checked": len(recommendations),
-                "top_k_requested": top_k,
-                "top_k_returned": min(top_k, len(recommendations)),
-                "max_books_limit": max_books
-            }
         }
-        
-        return result
     
     
     def batch_recommend(
