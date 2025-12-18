@@ -169,5 +169,6 @@ config.json
 .cache/
 .caches/
 __pycache__/
+inference_logs.jsonl
  
 content_similarity.pkl

@@ -286,17 +286,6 @@ def logout():
     flash('Вы вышли из системы', 'info')
     return redirect(url_for('login'))
 
-# Новый маршрут для получения рекомендаций
-@app.route('/recommend/<book_id>')
-def recommend(book_id):
-    # Находим книгу по ID
-    book = next((b for b in all_books_data if b['id'] == book_id), None)
-    if book:
-        # Здесь будет логика получения рекомендаций
-        return f"Рекомендации для книги: {book['title']}"
-    else:
-        return "Книга не найдена"
-
 # Страница контекстных рекомендаций
 @app.route('/context_recommendations')
 def context_recommendations_page():
