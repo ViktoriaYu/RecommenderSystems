@@ -7,7 +7,7 @@ def init_simple_recommender():
     Инициализация простого сервиса рекомендаций (ALS + Content)
     """
     try:
-        print("🚀 Инициализация SimpleRecommender сервиса...")
+        #print("🚀 Инициализация SimpleRecommender сервиса...")
         
         # Добавляем путь к ml_models
         current_dir = Path(__file__).parent.parent
@@ -19,7 +19,7 @@ def init_simple_recommender():
         # Проверяем наличие папки models_prod
         models_prod_path = current_dir / "models"
         if not models_prod_path.exists():
-            print(f"⚠️  Папка models не найдена: {models_prod_path}")
+            print(f"[simple_recommender_service.py]  Папка models не найдена: {models_prod_path}")
             return None
         
         # Проверяем основные файлы
@@ -33,21 +33,21 @@ def init_simple_recommender():
                 missing_files.append(file)
         
         if missing_files:
-            print(f"⚠️  Отсутствуют файлы модели: {missing_files}")
+            print(f"[simple_recommender_service.py]  Отсутствуют файлы модели: {missing_files}")
             return None
         
-        print(f"[simple_recommender_service.py] {models_prod_path}")
+        #print(f"[simple_recommender_service.py] {models_prod_path}")
         
         # Импортируем и инициализируем модель
         from ml_models.simple_recommender import SimpleRecommender
-        print(f"[simple_recommender_service.py] after impoert")
+         
         recommender = SimpleRecommender(str(models_prod_path))
         
-        print("✅ SimpleRecommender сервис успешно инициализирован")
+        #print("[simple_recommender_service.py] SimpleRecommender сервис успешно инициализирован")
         return recommender
         
     except Exception as e:
-        print(f"❌ Ошибка инициализации SimpleRecommender: {e}")
+        #print(f"[simple_recommender_service.py] Ошибка инициализации SimpleRecommender: {e}")
         import traceback
         traceback.print_exc()
         return None

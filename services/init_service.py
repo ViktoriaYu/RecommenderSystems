@@ -28,7 +28,7 @@ def init_recommendation_service():
         
         # Создаем экземпляр
         service = BookRecommendationService(model_path)
-        print(" Сервис рекомендаций успешно инициализирован")
+        #print(" Сервис рекомендаций успешно инициализирован")
         return service
         
     except Exception as e:

@@ -59,12 +59,12 @@ if init_recommendation_service:
     MODEL_AVAILABLE = service is not None
     if MODEL_AVAILABLE:
         recommendation_service = service
-        print("✅ Сервис рекомендаций успешно инициализирован (один раз)")
+        #print("✅ Сервис рекомендаций успешно инициализирован (один раз)")
     else:
-        print("⚠️  Модель не найдена или не удалось загрузить")
+        #print("⚠️  Модель не найдена или не удалось загрузить")
         recommendation_service = None
 else:
-    print("❌ Функция инициализации не найдена")
+    #print("❌ Функция инициализации не найдена")
     recommendation_service = None
 
 # Инициализация простого сервиса
@@ -76,7 +76,7 @@ try:
     else:
         print("⚠️  Не удалось загрузить SimpleRecommender")
 except Exception as e:
-    print(f"❌ Ошибка при инициализации SimpleRecommender: {e}")
+    #print(f"❌ Ошибка при инициализации SimpleRecommender: {e}")
     simple_recommender = None
 
 # Путь к базе данных
@@ -89,7 +89,6 @@ def load_books_data():
         base_dir = os.path.dirname(os.path.abspath(__file__))
         parquet_path = os.path.join(base_dir, 'data', 'books_result.parquet')
         
-        print(f"Пытаюсь загрузить Parquet файл из: {parquet_path}")
         
         # Проверяем существование файла
         if not os.path.exists(parquet_path):
@@ -98,9 +97,6 @@ def load_books_data():
         
         # Загружаем данные из Parquet
         books_df = pd.read_parquet(parquet_path)
-        
-        # Выводим информацию о загруженных данных для отладки
-        print(f"Успешно загружено {len(books_df)} книг")
         
         # Создаем словарь для быстрого поиска книг по book_id
         books_by_id = {}
@@ -137,7 +133,7 @@ def load_books_data():
                 # Сохраняем в словаре для быстрого поиска
                 books_by_id[book_id] = book
         
-        print(f"Успешно обработано {len(books_data)} книг")
+        #print(f"Успешно обработано {len(books_data)} книг")
         
         
         return books_data, books_by_id

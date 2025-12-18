@@ -23,7 +23,6 @@ class BookRecommendationService:
         Args:
             model_path: путь к сохраненной системе
         """
-        print(f"[recommendation_service.py] Инициализация сервиса рекомендаций...")
         
         # Определяем путь к модели
         if model_path is None:
@@ -34,7 +33,6 @@ class BookRecommendationService:
                 'enhanced_recommendation_system.pkl'
             )
         
-        print("[recommendation_service.py]", model_path)
         # Проверяем существование файла
         if not os.path.exists(model_path):
             raise FileNotFoundError(f"Model file not found: {model_path}")
@@ -49,7 +47,7 @@ class BookRecommendationService:
             self.model_class = TextAwareDynamicRecommender
         except ImportError:
             # Если не можем импортировать, создаем локальный класс
-            print(f"[recommendation_service.py] Модель не инициализировалась")
+            print(f"[context_recommendation_service.py] Модель не инициализировалась")
         
         # Загружаем модель
         self.model = self.model_class(**self.system['model_config'])
@@ -69,12 +67,14 @@ class BookRecommendationService:
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         self.model.to(self.device)
         
+        '''
         print(f" Сервис готов:")
         print(f"   • Книг в базе: {len(self.books_df)}")        
         print(f"   • Жанров: {len(self.genre_keywords)}")
         print(f"   • Устройство: {self.device}")
         print(f"   • Пользователей: {self.system['model_config']['num_users']}")
         print(f"   • Авторов: {self.system['model_config']['num_authors']}")
+        '''
     
     def _text_to_tensor(self, text: str) -> torch.Tensor:
         """Конвертирует текст в тензор"""

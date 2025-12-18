@@ -19,7 +19,7 @@ class SimpleRecommender:
             current_dir = Path(__file__).parent.parent
             model_path = current_dir / "models"
         
-        print(f"📦 Загрузка SimpleRecommender из {model_path}...")
+        #print(f"📦 Загрузка SimpleRecommender из {model_path}...")
         
         try:
             # Проверяем существование файлов
@@ -34,7 +34,7 @@ class SimpleRecommender:
             for file in required_files:
                 file_path = os.path.join(model_path, file)
                 if not os.path.exists(file_path):
-                    print(f"⚠️  Файл {file} не найден по пути: {file_path}")
+                    print(f"simple_recommender.py  Файл {file} не найден по пути: {file_path}")
                     raise FileNotFoundError(f"Файл {file} не найден")
             
             # Загрузка всех необходимых файлов
@@ -69,10 +69,10 @@ class SimpleRecommender:
             norms[norms == 0] = 1  # избегаем деления на 0
             self.normalized_item_embeddings = self.item_embeddings / norms[:, np.newaxis]
             
-            print(f"✅ SimpleRecommender загружен: {len(self.user_to_idx)} пользователей, {len(self.item_to_idx)} книг")
+            #print(f"[simple_recommender.py] SimpleRecommender загружен: {len(self.user_to_idx)} пользователей, {len(self.item_to_idx)} книг")
             
         except Exception as e:
-            print(f"❌ Ошибка загрузки SimpleRecommender: {e}")
+            print(f"[simple_recommender.py] Ошибка загрузки SimpleRecommender: {e}")
             import traceback
             traceback.print_exc()
             raise
@@ -157,7 +157,7 @@ class SimpleRecommender:
             }
             
         except Exception as e:
-            print(f"❌ Ошибка в recommend_for_user: {e}")
+            print(f"[simple_recommender.py] Ошибка в recommend_for_user: {e}")
             return {
                 'status': 'error',
                 'message': str(e),
@@ -215,7 +215,7 @@ class SimpleRecommender:
             }
             
         except Exception as e:
-            print(f"❌ Ошибка в similar_items: {e}")
+            print(f"[simple_recommender.py] Ошибка в similar_items: {e}")
             return {
                 'status': 'error',
                 'message': str(e),
